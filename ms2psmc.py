@@ -12,8 +12,9 @@ from logging import error, warning, info, debug, critical
 loglevel = logging.WARNING
 logging.basicConfig(format = '%(module)s:%(lineno)d:%(levelname)s: %(message)s', level = loglevel)
 
-indivs = 2
+#indivs = 2
 binsize = 100
+indivsep = ''
 
 #def usage():
 ##	print '''usage: %s [-l loci] [-i individuals_per_population] [-o output] ms_cmd
@@ -62,6 +63,26 @@ def dipsitetypes(n):
 		else:
 			yield(gt)
 
+def phases(gt):
+# diploid allele combinations
+	yield(gt)
+	if gt[0] != gt[1]:
+		yield(gt[::-1])
+
+def phasecombs(gts, sep = ''):
+# different phase combinations of diploid genotypes in gts 
+	if len(gts) > 1:
+		for cc in phasecombs(gts[1:], sep):
+			for ph in phases(gts[0]):
+				yield(sep.join((ph + cc)))
+	else:
+		for ph in phases(gts[0]):
+			yield(ph)
+
+tgt = ['AB', 'CD', 'EF']
+assert ','.join(phasecombs(tgt)) == 'ABCDEF,BACDEF,ABDCEF,BADCEF,ABCDFE,BACDFE,ABDCFE,BADCFE'
+
+
 def lout(*args):
 	sys.stdout.write('\t'.join([str(x) for x in args]) + '\n')
 
@@ -90,7 +111,7 @@ else:
 j = 0
 chrseq = []
 nchrs = int(inputf.next().split()[1])
-indivs = nchrs/2
+#indivs = nchrs/2
 if nchrs % 2:
 	error('odd number of input chrs')
 	sys.exit(2)
@@ -122,9 +143,10 @@ for line in inputf:
 			chrseq.append(inputf.next().strip())
 		nsites = len(chrseq[0])
 		if opt.phased:
-			siteseq = ['\t'.join([''.join([chrseq[x][s], chrseq[x+1][s]]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
+			siteseq = [indivsep.join([''.join([chrseq[x][s], chrseq[x+1][s]]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
 		else:
-			siteseq = ['\t'.join([genotype(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
+#			siteseq = ['\t'.join([genotype(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
+			siteseq = [','.join(phasecombs([genotype(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)], sep=indivsep)) for s in range(nsites)]
 
 #			print([opt.chrname, opt.chrlen, lastpos, opt.length, lastpos + opt.length])
 		if opt.output == 'segsep':
@@ -138,14 +160,8 @@ for line in inputf:
 			for i in range(nsites):
 				pos = sitepos[i] + int((snum - 1) * opt.length)
 				if pos > lastpos:
-					lout(chrnum, pos, pos - lastpos, siteseq[i]) # adjust for MSMC (phased alleles for all samples)
+					lout(chrnum, pos, pos - lastpos, siteseq[i])
 				lastpos = pos
-#			else:
-#				lastpos = 0
-#				for i in range(nsites):
-#					pos = sitepos[i]
-#					lout(snum, pos, pos - lastpos, siteseq[i]) # adjust for MSMC
-#					lastpos = pos
 
 		elif opt.output == 'psmcfa':
 			if opt.chrlen and lastpos + opt.length > opt.chrlen:
