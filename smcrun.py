@@ -82,28 +82,46 @@ def run(args):
 	# run smc inference
 	if not args.sim:
 		os.chdir(args.DIR)
-	sname = os.path.splitext(os.path.basename(args.DIR))[0]
+	sname = os.path.splitext(os.path.basename(os.path.normpath(args.DIR)))[0]
 	infiles = glob.glob('segsep/*.segsep')
 	infiles.sort(key=aosutils.natural_key)
 	if args.nfiles:
 		infiles = infiles[:args.nfiles]
 	debug(infiles)
 	jobname = ':'.join(('smc', sname))
-	sname = 'run'
+	sname = 'msmc'
 	if args.psmc:
+		if not args.memory:
+			args.memory = 3
 		#TODO: cat psmcfa files
-		cmd = 'bsub.py "psmc -N25 -t15 -r5 -p \'4+25*2+4+6\' psmcfa/$s.psmcfa" -o %s.psmc -M 3 -j %s' % (sname, sname, jobname)
+		cmd = 'bsub.py "psmc -N25 -t15 -r5 -p \'4+25*2+4+6\' psmcfa/$s.psmcfa" -o %s.psmc -M %d -j %s' % (sname, sname, args.memory, jobname)
 	else:
 		if args.geneflow: # assume two samples
-			cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p 8*1+11*2 -t %d -o %s %s" -o %s.msmc.out -M 20 -t %d -q long -j %s' % (args.threads, sname, ' '.join(infiles), sname, args.threads, jobname)
+			if not args.memory:
+				args.memory = 16
+			cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p 8*1+11*2 -t %d -o %s %s" -o %s.out -M %d -t %d -q long -j %s' % (args.threads, sname, ' '.join(infiles), sname, args.memory, args.threads, jobname)
 		else:
-			cmd = 'bsub.py "msmc -t %d -o %s segsep/*.segsep" -o %s.msmc.out -M 10 -t %d -q long -j %s' % (args.threads, sname, sname, args.threads, jobname)
+			if not args.memory:
+				args.memory = 10
+			cmd = 'bsub.py "msmc -t %d -o %s segsep/*.segsep" -o %s.out -M %d -t %d -q long -j %s' % (args.threads, sname, sname, args.memory, args.threads, jobname)
 	if args.bsim:
 		cmd += ' --sim'
 	info('submitting \'%s\'' % (jobname))
 	aosutils.subcall(cmd, args.sim, wait = True)
 
+def plot(args):
 	# make plots
+	if not args.sim:
+		os.chdir(args.DIR)
+	sname = os.path.splitext(os.path.basename(os.path.normpath(args.DIR)))[0]
+	jobname = ':'.join(('smcplot', sname))
+
+	if args.geneflow:
+		cmd = 'smcplot.py -m run.final.txt -t %f -u %e --geneflow --hc -o %s-geneflow' % (args.tgen, args.mu, sname)
+	else:
+		cmd = 'smcplot.py -m run.final.txt -t %f -u %e --hc -o %s' % (args.tgen, args.mu, sname)
+	info('running \'%s\'' % (jobname))
+	aosutils.subcall(cmd, args.sim, wait = True)
 
 
 pp = argparse.ArgumentParser(add_help=False)
@@ -116,7 +134,7 @@ pp.add_argument('--bsim', action='store_true', default = False, help=argparse.SU
 p = argparse.ArgumentParser()
 s = p.add_subparsers()#help='sub-command help')
 
-p1 = s.add_parser('prep', help='prepare files for smc analysis')#, add_help=False)
+p1 = s.add_parser('prep', help='prepare files for psmc/msmc analysis')#, add_help=False)
 s1 = p1.add_subparsers(dest='s1name')#help='sub-command help')
 p11 = s1.add_parser('ms', parents=[pp])#, help='prep help')
 p11.add_argument('MS_FILE', help = 'ms simulation file')
@@ -132,7 +150,15 @@ p2.add_argument('DIR')
 p2.add_argument('--geneflow', action='store_true', default = False, help = 'infer gene flow with msmc')
 p2.add_argument('-n', '--nfiles', type=int, default=0, help = 'number of segsep files to include')
 p2.add_argument('-t', '--threads', type=int, default=4, help = 'number of threads to use')
+p2.add_argument('-M', '--memory', type=int, default=0, help = 'GB of RAM to use')
 p2.set_defaults(func=run)
+
+p3 = s.add_parser('plot', parents=[pp], help='plot psmc/msmc results')
+p3.add_argument('DIR')
+p3.add_argument('--geneflow', action='store_true', default = False, help = 'infer gene flow with msmc')
+p3.add_argument('-t', '--tgen', type=int, default=30.0, help = 'generation time (y)')
+p3.add_argument('-u', '--mu', type=int, default=1.25e-8, help = 'per-generation mutation rate (bp^-1)')
+p3.set_defaults(func=plot)
 
 args = p.parse_args()
 
