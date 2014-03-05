@@ -16,6 +16,9 @@ p.add_option('--hc', action='store_true', default = False)
 p.add_option('--colours', default = '')
 p.add_option('--recycle_colours', action='store_true', default = False)
 p.add_option('--geneflow', action='store_true', default = False)
+p.add_option('--coalrates', action='store_true', default = False)
+p.add_option('--showvals', action='store_true', default = False)
+p.add_option('--noplot', action='store_true', default = False)
 p.add_option('-m', '--msmcfile', default = [], action='append')
 p.add_option('-M', '--msmcdir', default = '')
 p.add_option('-p', '--psmcfile', default = [], action='append')
@@ -47,8 +50,9 @@ maxx = 0
 ic = 0
 for ir, rfile in enumerate(opt.msmcfile):
 	tb=pd.read_table(rfile, header = 0)
-	sname = os.path.splitext(os.path.basename(rfile))[0]
+#	sname = os.path.splitext(os.path.basename(rfile))[0]
 	sname = '.'.join(os.path.basename(rfile).split('.')[0:2])
+	sname = rfile.split('.')[0]
 	spname = sname.split('_')[0]
 	print(sname)
 
@@ -59,16 +63,33 @@ for ir, rfile in enumerate(opt.msmcfile):
 	ic += 1
 
 	rx = opt.tgen*(tb.ix[:,1])/opt.mugen
-	if opt.geneflow:
-		ry = 2 * tb.ix[:,4] / (tb.ix[:,3] + tb.ix[:,5])
+	rx[0] = 1
+	li = len(rx) - 1
+	if opt.coalrates:
+		for ncol, lab in [(3, 'l00'), (4, 'l01'), (5, 'l11')]:#, (3, 'l00')] 
+			ry = tb.ix[:,ncol]
+			plt.step(rx, ry, label = lab) #TODO: fix initial point
+#			plt.text(rx[li], ry[li], sname, fontsize=6)
+#		ry = tb.ix[:,4]
+#		plt.step(rx, ry, label = 'l01') #TODO: fix initial point
+#		plt.text(rx[li], ry[li], sname, fontsize=6)
+#		ry = tb.ix[:,5]
+#		plt.step(rx, ry, label = 'l11') #TODO: fix initial point
+#		plt.text(rx[li], ry[li], sname, fontsize=6)
+#		ry = (tb.ix[:,3] + tb.ix[:,5])
+#		plt.step(rx, ry, label = 'l00 + l11') #TODO: fix initial point
+#		plt.text(rx[li], ry[li], sname, fontsize=6)
 	else:
-		ry = (1/tb.ix[:,3])/(2*opt.mugen)
-	plt.step(rx, ry, label = sname, color=icol) #TODO: fix initial point
+		if opt.geneflow:
+			ry = 2 * tb.ix[:,4] / (tb.ix[:,3] + tb.ix[:,5])
+		else:
+			ry = (1/tb.ix[:,3])/(2*opt.mugen)
+		plt.step(rx, ry, label = sname, color=icol) #TODO: fix initial point
 #	plt.step(opt.tgen*(tb.ix[:,1])/opt.mugen, (1/tb.ix[:,3])/(2*opt.mugen), label = sname, color=icol)
 #	li = len(tb.ix[:,1]) - 1
 	li = len(rx) - 1
 #	plt.text(opt.tgen*(tb.ix[li,1])/opt.mugen, (1/tb.ix[li,3])/(2*opt.mugen), sname, color=icol, fontsize=6)
-	plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
+#	plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
 	maxx = max(maxx, max(rx))
 	maxy = max(maxy, max(ry))
 
@@ -90,6 +111,9 @@ for ir, rfile in enumerate(opt.psmcfile):
 
 	rx = tb.ix[:,0]
 	ry = 1e4*tb.ix[:,1]
+	if opt.showvals:
+		for ix, iy in zip(rx, ry):
+			print('%f\t%f' % (ix, iy))
 	plt.step(rx, ry, label = sname, color=icol)
 	li = len(rx) - 1
 	plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
@@ -117,15 +141,17 @@ plt.xlim(1e3, maxx**1.1)
 plt.xlabel('Time (y)')
 if opt.geneflow:
 	plt.ylim(0, 1.1)
-	plt.ylabel(r'Relative gene flow')
+	plt.ylabel(r'Relative coalescent rate')
 else:
 	plt.ylim(0, 1.1*maxy)
 	plt.ylabel(r'$N_e$')
 
-#plt.legend(loc = 2, ncol = 2, fontsize = 'xx-small')
-if opt.hc:
-	fname = opt.outname + '.pdf'
-	sys.stderr.write('hardcopy in %s\n' % fname)
-	plt.savefig(fname)
-else:
-	plt.show()
+plt.legend(loc = 4, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+
+if not opt.noplot:
+	if opt.hc:
+		fname = opt.outname + '.pdf'
+		sys.stderr.write('hardcopy in %s\n' % fname)
+		plt.savefig(fname)
+	else:
+		plt.show()
