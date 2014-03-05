@@ -19,11 +19,15 @@ def prep(args):
 	debug(args)
 	# make dir
 	if args.s1name == 'vcf':
-		vcf_files = [os.path.abspath(x) for x in args.VCF_FILE]
+		vcf_input = [(os.path.abspath(x), '') for x in args.VCF_FILE]
+		if args.inputlist:
+			for line in open(args.inputlist):
+				vcf_input.append(tuple(line.split()))
+
 		if args.samples:
 			sname = '-'.join([os.path.splitext(os.path.basename(x))[0] for x in args.samples.split(',')])
 		else:
-			sname = os.path.splitext(args.VCF_FILE[0])[0]
+			sname = os.path.splitext(vcf_input[0][0])[0]
 	elif args.s1name == 'ms':
 		ms_file = os.path.abspath(args.MS_FILE)
 		sname = os.path.splitext(args.MS_FILE)[0]
@@ -47,9 +51,12 @@ def prep(args):
 	if not args.sim and os.path.exists(subdir):
 		os.chdir(subdir)
 
+	if args.inputlist and not (args.sim or os.path.exists('tmp')):
+		os.mkdir('tmp')
+
 	# make segsep/psmcfa files
 	if args.s1name == 'vcf':
-		for vcf in vcf_files:
+		for vcf, repvcf in vcf_input:
 			vcfname = os.path.basename(vcf).replace('.bgz', '').replace('.vcf', '')
 			jobname = ':'.join((subdir, sname, vcfname))
 			outname = '.'.join((vcfname, subdir))
@@ -57,10 +64,18 @@ def prep(args):
 				bcfview = 'bcftools view -s %s' % (args.samples)
 			else:
 				bcfview = 'bcftools view'
+			if repvcf:
+				tmprep = 'tmp/%s.rep.gz' % vcfname
+				cmd = '%s %s | gzip > %s' % (bcfview, repvcf, tmprep)
+				info('extracting replacement calls from %s' % (repvcf))
+				aosutils.subcall(cmd, args.sim, wait = True)
+				reparg = '--replacecalls=%s' % tmprep
+			else:
+				reparg = ''
 			if args.psmc:
 				cmd = 'bsub.py "%s %s | vcfutils_noinfo.pl vcf2fq | fq2psmcfa -" -o psmcfa/$s -M 2 -j %s' % (bcfview, vcf, outname, jobname)
 			else:
-				cmd = 'bsub.py "%s %s | vcf-proc.py --segsep --alleles" -o %s -M 1 -t 2 -j %s' % (bcfview, vcf, outname, jobname)
+				cmd = 'bsub.py "%s %s | vcf-proc.py --segsep --alleles %s" -o %s -M 1 -t 2 -j %s' % (bcfview, vcf, reparg, outname, jobname)
 			if args.bsim:
 				cmd += ' --sim'
 			info('submitting \'%s\'' % (jobname))
@@ -99,11 +114,11 @@ def run(args):
 		if args.geneflow: # assume two samples
 			if not args.memory:
 				args.memory = 16
-			cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p 8*1+11*2 -t %d -o %s %s" -o %s.out -M %d -t %d -q long -j %s' % (args.threads, sname, ' '.join(infiles), sname, args.memory, args.threads, jobname)
+			cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p 8*1+11*2 -t %d -o %s %s" -o %s.out -M %d -t %d -q %s -j %s' % (args.threads, sname, ' '.join(infiles), sname, args.memory, args.threads, args.queue, jobname)
 		else:
 			if not args.memory:
 				args.memory = 10
-			cmd = 'bsub.py "msmc -t %d -o %s segsep/*.segsep" -o %s.out -M %d -t %d -q long -j %s' % (args.threads, sname, sname, args.memory, args.threads, jobname)
+			cmd = 'bsub.py "msmc -t %d -o %s segsep/*.segsep" -o %s.out -M %d -t %d -q %s -j %s' % (args.threads, sname, sname, args.memory, args.threads, args.queue, jobname)
 	if args.bsim:
 		cmd += ' --sim'
 	info('submitting \'%s\'' % (jobname))
@@ -140,8 +155,9 @@ p11 = s1.add_parser('ms', parents=[pp])#, help='prep help')
 p11.add_argument('MS_FILE', help = 'ms simulation file')
 p11.add_argument('--phased', action='store_true', help='alleles are phased in input') 
 p12 = s1.add_parser('vcf', parents=[pp])#, help='prep help')
-p12.add_argument('VCF_FILE', nargs='+') 
+p12.add_argument('VCF_FILE', nargs='*') 
 p12.add_argument('-s', '--samples', help='comma-separated list of sample names in VCF_FILE') 
+p12.add_argument('-f', '--inputlist', help='file containing a list of input vcfs. For each one, a vcf of replacement calls may specified in a second column.') 
 #p12.add_argument('--phased', action='store_true', help='alleles are phased in input') 
 p1.set_defaults(func=prep)
 
@@ -150,6 +166,7 @@ p2.add_argument('DIR')
 p2.add_argument('--geneflow', action='store_true', default = False, help = 'infer gene flow with msmc')
 p2.add_argument('-n', '--nfiles', type=int, default=0, help = 'number of segsep files to include')
 p2.add_argument('-t', '--threads', type=int, default=4, help = 'number of threads to use')
+p2.add_argument('-q', '--queue', default='long', help = 'queue to use')
 p2.add_argument('-M', '--memory', type=int, default=0, help = 'GB of RAM to use')
 p2.set_defaults(func=run)
 
