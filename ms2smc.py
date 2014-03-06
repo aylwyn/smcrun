@@ -22,11 +22,11 @@ indivsep = ''
 #	output		  'summary', 'full' (summary)''' % os.path.basename(sys.argv[0])
 
 p = optparse.OptionParser()
-p.add_option('-l', '--length', default = '10e3')
+p.add_option('-l', '--length', default = '10e3', help = 'seqlen for converting ms coords (within each rep)')
 p.add_option('--output', action='store', type = 'choice', choices = ['segsep', 'psmcfa'], default = 'segsep', help = 'output format (segsep, psmcfa)')
-p.add_option('--onechr', action='store', help = 'accumulate sites on one chromosome')
-p.add_option('--chrlen', default = '0', help = 'accumulate sites on multiple chromosomes of length CHRLEN (split using awk \'{print > $1".segsep"}\')')
-p.add_option('--phased', action='store_true', default = False, help = 'keep haplotype phasing')
+p.add_option('--onechr', action='store', help = 'output sites on one chromosome')
+p.add_option('--chrlen', default = '0', help = 'output sites on multiple chromosomes of length CHRLEN (split using awk \'{print > $1".segsep"}\')')
+p.add_option('--unphased', action='store_true', default = False, help = 'keep haplotype phasing')
 opt, args = p.parse_args()
 
 opt.length = eval(opt.length)
@@ -142,10 +142,9 @@ for line in inputf:
 		for indiv in range(nchrs):
 			chrseq.append(inputf.next().strip())
 		nsites = len(chrseq[0])
-		if opt.phased:
+		if not opt.unphased:
 			siteseq = [indivsep.join([''.join([chrseq[x][s], chrseq[x+1][s]]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
 		else:
-#			siteseq = ['\t'.join([genotype(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
 			siteseq = [','.join(phasecombs([genotype(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)], sep=indivsep)) for s in range(nsites)]
 
 #			print([opt.chrname, opt.chrlen, lastpos, opt.length, lastpos + opt.length])
