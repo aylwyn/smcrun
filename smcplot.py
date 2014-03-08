@@ -59,6 +59,7 @@ for ir, rfile in enumerate(opt.msmcfile):
 	ic += 1
 
 	rx = opt.tgen*(tb.ix[:,1])/opt.mugen
+	rx[0] = max(rx[0], 1)
 	if opt.geneflow:
 		ry = 2 * tb.ix[:,4] / (tb.ix[:,3] + tb.ix[:,5])
 	else:
