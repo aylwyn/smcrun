@@ -70,15 +70,6 @@ for ir, rfile in enumerate(opt.msmcfile):
 			ry = tb.ix[:,ncol]
 			plt.step(rx, ry, label = lab) #TODO: fix initial point
 #			plt.text(rx[li], ry[li], sname, fontsize=6)
-#		ry = tb.ix[:,4]
-#		plt.step(rx, ry, label = 'l01') #TODO: fix initial point
-#		plt.text(rx[li], ry[li], sname, fontsize=6)
-#		ry = tb.ix[:,5]
-#		plt.step(rx, ry, label = 'l11') #TODO: fix initial point
-#		plt.text(rx[li], ry[li], sname, fontsize=6)
-#		ry = (tb.ix[:,3] + tb.ix[:,5])
-#		plt.step(rx, ry, label = 'l00 + l11') #TODO: fix initial point
-#		plt.text(rx[li], ry[li], sname, fontsize=6)
 	else:
 		if opt.geneflow:
 			ry = 2 * tb.ix[:,4] / (tb.ix[:,3] + tb.ix[:,5])
