@@ -20,9 +20,9 @@ p.add_option('--coalrates', action='store_true', default = False)
 p.add_option('--showvals', action='store_true', default = False)
 p.add_option('--noplot', action='store_true', default = False)
 p.add_option('-m', '--msmcfile', default = [], action='append')
-p.add_option('-M', '--msmcdir', default = '')
+p.add_option('-M', '--msmcdir', default = [], action='append')
 p.add_option('-p', '--psmcfile', default = [], action='append')
-p.add_option('-P', '--psmcdir', default = '')
+p.add_option('-P', '--psmcdir', default = [], action='append')
 p.add_option('-u', '--mugen', type='float', default = 1.25e-8)
 p.add_option('-t', '--tgen', type='float', default = 25.0)
 p.add_option('-s', '--simfile', default='')
@@ -33,10 +33,10 @@ opt, args = p.parse_args()
 #if len(args) > 0:
 #	rfiles = args
 
-if opt.msmcdir:
-	opt.msmcfile += glob.glob(os.path.join(opt.msmcdir, '*.final.txt'))
-if opt.psmcdir:
-	opt.psmcfile += glob.glob(os.path.join(opt.msmcdir, '*.psmc.0.txt'))
+for smcdir in opt.msmcdir:
+	opt.msmcfile += glob.glob(os.path.join(smcdir, '*.final.txt'))
+for smcdir in opt.psmcdir:
+	opt.psmcfile += glob.glob(os.path.join(smcdir, '*.psmc.0.txt'))
 
 if opt.colours:
 	# read coldict file TODO
@@ -51,8 +51,9 @@ ic = 0
 for ir, rfile in enumerate(opt.msmcfile):
 	tb=pd.read_table(rfile, header = 0)
 #	sname = os.path.splitext(os.path.basename(rfile))[0]
-	sname = '.'.join(os.path.basename(rfile).split('.')[0:2])
-	sname = rfile.split('.')[0]
+	sname = rfile
+#	sname = '.'.join(os.path.basename(rfile).split('.')[0:2])
+#	sname = rfile.split('.')[0]
 	spname = sname.split('_')[0]
 	print(sname)
 
