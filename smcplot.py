@@ -63,7 +63,7 @@ for ir, rfile in enumerate(opt.msmcfile):
 	ic += 1
 
 	rx = opt.tgen*(tb.ix[:,1])/opt.mugen
-	rx[0] = 1
+	rx[0] = max(rx[0], 1)
 	li = len(rx) - 1
 	if opt.coalrates:
 		for ncol, lab in [(3, 'l00'), (4, 'l01'), (5, 'l11')]:#, (3, 'l00')] 
