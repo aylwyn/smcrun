@@ -34,7 +34,7 @@ opt, args = p.parse_args()
 #	rfiles = args
 
 if opt.msmcdir:
-	opt.msmcfile += glob.glob(os.path.join(opt.msmcdir, '*.msmc.final.txt'))
+	opt.msmcfile += glob.glob(os.path.join(opt.msmcdir, '*.final.txt'))
 if opt.psmcdir:
 	opt.psmcfile += glob.glob(os.path.join(opt.msmcdir, '*.psmc.0.txt'))
 
