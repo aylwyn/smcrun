@@ -44,6 +44,7 @@ if opt.colours:
 else:
 	coldict = {}
 
+print('Scaling with mu = %e per gen and tgen = %.1f' % (opt.mugen, opt.tgen))
 #for rfile in glob.glob(os.path.join(rdir, dpref+'*.[1-7].msmc.final.txt')):
 maxy = 0
 maxx = 0
@@ -63,7 +64,7 @@ for ir, rfile in enumerate(opt.msmcfile):
 	ic += 1
 
 	rx = opt.tgen*(tb.ix[:,1])/opt.mugen
-	rx[0] = max(rx[0], 1)
+	rx[0] = max(rx[0], 1) # to account for log x axis
 	li = len(rx) - 1
 	if opt.coalrates:
 		for ncol, lab in [(3, 'l00'), (4, 'l01'), (5, 'l11')]:#, (3, 'l00')] 
@@ -137,7 +138,7 @@ else:
 	plt.ylim(0, 1.1*maxy)
 	plt.ylabel(r'$N_e$')
 
-plt.legend(loc = 4, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+plt.legend(loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 
 if not opt.noplot:
 	if opt.hc:
