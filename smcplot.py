@@ -25,6 +25,7 @@ p.add_option('-p', '--psmcfile', default = [], action='append')
 p.add_option('-P', '--psmcdir', default = [], action='append')
 p.add_option('-u', '--mugen', type='float', default = 1.25e-8)
 p.add_option('-t', '--tgen', type='float', default = 25.0)
+p.add_option('--maxy', type='float', default = 0.0)
 p.add_option('-s', '--simfile', default='')
 p.add_option('-o', '--outname', default='psmc')
 
@@ -70,17 +71,17 @@ for ir, rfile in enumerate(opt.msmcfile):
 	if opt.coalrates:
 		for ncol, lab in [(3, 'l00'), (4, 'l01'), (5, 'l11')]:#, (3, 'l00')] 
 			ry = tb.ix[:,ncol]
-			plt.step(rx, ry, label = lab) #TODO: fix initial point
+#			ry = (1/tb.ix[:,ncol])/(2*opt.mugen)
+			plt.step(rx, ry, label = lab)
 #			plt.text(rx[li], ry[li], sname, fontsize=6)
+			maxy = max(maxy, max(ry))
 	else:
 		if opt.geneflow:
 			ry = 2 * tb.ix[:,4] / (tb.ix[:,3] + tb.ix[:,5])
 		else:
 			ry = (1/tb.ix[:,3])/(2*opt.mugen)
-		plt.step(rx, ry, label = sname, color=icol) #TODO: fix initial point
-#	plt.step(opt.tgen*(tb.ix[:,1])/opt.mugen, (1/tb.ix[:,3])/(2*opt.mugen), label = sname, color=icol)
-#	li = len(tb.ix[:,1]) - 1
-	li = len(rx) - 1
+		plt.step(rx, ry, label = sname, color=icol)
+#	li = len(rx) - 1
 #	plt.text(opt.tgen*(tb.ix[li,1])/opt.mugen, (1/tb.ix[li,3])/(2*opt.mugen), sname, color=icol, fontsize=6)
 #	plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
 	maxx = max(maxx, max(rx))
@@ -136,8 +137,12 @@ if opt.geneflow:
 	plt.ylim(0, 1.1)
 	plt.ylabel(r'Relative coalescent rate')
 else:
-	plt.ylim(0, 1.1*maxy)
-	plt.ylabel(r'$N_e$')
+	if opt.maxy <= 0.0:
+		plt.ylim(0, 1.1*maxy)
+	else:
+		plt.ylim(0, 1.1*opt.maxy)
+	if not opt.coalrates:
+		plt.ylabel(r'$N_e$')
 
 plt.legend(loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 

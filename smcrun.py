@@ -96,21 +96,15 @@ def prep(args):
 		else:
 			phasedarg = ''
 		if args.psmc:
-			cmd = 'ms2smc.py -l 1e7 %s --chrlen=1e8 --output=psmcfa %s' % (ms_file, phasedarg)
+			cmd = 'ms2smc.py -l 1e7 %s --chrlen=%d --output=psmcfa %s' % (ms_file, args.chrlen, phasedarg)
 		else:
-			cmd = 'ms2smc.py -l 1e7 %s --chrlen=1e8 %s | awk \'{print > $1".segsep"}\'' % (ms_file, phasedarg)
+			cmd = 'ms2smc.py -l 1e7 %s --chrlen=%d %s | awk \'{print > $1".segsep"}\'' % (ms_file, args.chrlen, phasedarg)
 		info('running \'%s\'' % (jobname))
 		aosutils.subcall(cmd, args.sim, wait = True)
 
-def run(args):
-	# run smc inference
-#	if os.exists(args.DIR):
+def run(args): # run smc inference
 	os.chdir(args.DIR)
 	debug('In %s:' % args.DIR)
-#	else:
-#		error('%s not found' % args.DIR)
-#	sname = os.path.basename(os.path.normpath(args.DIR))
-	jobname = ':'.join(('smc', os.path.basename(os.path.normpath(args.DIR))))
 	if args.psmc:
 		sname = 'psmc'
 		jobname = ':'.join(('smc', sname))
@@ -119,33 +113,44 @@ def run(args):
 			args.memory = 3
 		#TODO: cat args.nfiles psmcfa files into all.psmfca
 		cmd = 'bsub.py "psmc -N25 -t15 -r5 -p \'4+25*2+4+6\' psmcfa/all.psmcfa" -o %s -M %d -j %s' % (sname, outf, args.memory, jobname)
+		if args.bsim:
+			cmd += ' --sim'
+		if os.path.exists(outf) and not args.replace:
+			warning('%s/%s exists; use --replace' % (args.DIR, outf))
+		else:
+			info('submitting \'%s\'' % (jobname))
+			aosutils.subcall(cmd, args.sim, wait = True)
 	else:
-		sname = 'msmc'
-		outf = 'run.%s.out' % sname
 		infiles = glob.glob('segsep/*.segsep')
 		infiles.sort(key=aosutils.natural_key)
 		if args.nfiles:
 			infiles = infiles[:args.nfiles]
 		debug(infiles)
-		if args.geneflow: # assume two samples
-			if not args.memory:
-				args.memory = 16
-			cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p 8*1+11*2 -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.threads, sname, ' '.join(infiles), outf, args.memory, args.threads, args.queue, jobname)
-		else:
-			if not args.memory:
-				args.memory = 10
-			cmd = 'bsub.py "msmc -t %d -o %s segsep/*.segsep" -o %s -M %d -t %d -q %s -j %s' % (args.threads, sname, outf, args.memory, args.threads, args.queue, jobname)
-	if args.bsim:
-		cmd += ' --sim'
-	if os.path.exists(outf) and not args.replace:
-		error('%s/%s exists; use --replace' % (args.DIR, outf))
-		return(2)
 
-	info('submitting \'%s\'' % (jobname))
-	aosutils.subcall(cmd, args.sim, wait = True)
+		if args.combined:
+			infiles = [' '.join(infiles)]
 
-def plot(args):
-	# make plots
+		for jf, infile in infiles:
+			sname = '%d.msmc' % jf
+			outf = sname + '.out'
+			jobname = ':'.join((sname, os.path.basename(os.path.normpath(args.DIR))))
+			if args.geneflow: # assume two samples
+				if not args.memory:
+					args.memory = 16
+				cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p 8*1+11*2 -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.threads, sname, infile, outf, args.memory, args.threads, args.queue, jobname)
+			else:
+				if not args.memory:
+					args.memory = 10
+				cmd = 'bsub.py "msmc -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.threads, sname, outf, infile, args.memory, args.threads, args.queue, jobname)
+			if args.bsim:
+				cmd += ' --sim'
+			if os.path.exists(outf) and not args.replace:
+				warning('%s/%s exists; use --replace' % (args.DIR, outf))
+			else:
+				info('submitting \'%s\'' % (jobname))
+				aosutils.subcall(cmd, args.sim, wait = True)
+
+def plot(args): # make plots
 	if not args.sim:
 		os.chdir(args.DIR)
 #	sname = os.path.splitext(os.path.basename(os.path.normpath(args.DIR)))[0]
@@ -175,6 +180,7 @@ p1 = s.add_parser('prep', help='prepare files for psmc/msmc analysis')#, add_hel
 s1 = p1.add_subparsers(dest='s1name')#help='sub-command help')
 p11 = s1.add_parser('ms', parents=[pp])#, help='prep help')
 p11.add_argument('MS_FILE', help = 'ms simulation file')
+p11.add_argument('--chrlen', default = 50e6, help='alleles are considered unphased in input') 
 p11.add_argument('--unphased', action='store_true', default = False, help='alleles are considered unphased in input') 
 p12 = s1.add_parser('vcf', parents=[pp])#, help='prep help')
 p12.add_argument('VCF_FILE', nargs='*') 
@@ -186,6 +192,7 @@ p1.set_defaults(func=prep)
 p2 = s.add_parser('run', parents=[pp], help='run psmc/msmc')
 p2.add_argument('DIR')
 p2.add_argument('--geneflow', action='store_true', default = False, help = 'infer gene flow with msmc')
+p2.add_argument('--combined', action='store_true', default = False, help = 'run on all segsep files combined')
 p2.add_argument('-n', '--nfiles', type=int, default=0, help = 'number of segsep files to include')
 p2.add_argument('-t', '--threads', type=int, default=4, help = 'number of threads to use')
 p2.add_argument('-q', '--queue', default='normal', help = 'queue to use')
