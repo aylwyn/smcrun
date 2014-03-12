@@ -162,7 +162,7 @@ def run(args): # run smc inference
 			if args.geneflow: # assume two samples
 				if not args.memory:
 					args.memory = 16
-				cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p 8*1+11*2 -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.threads, sname, infile, outf, args.memory, args.threads, args.queue, jobname)
+				cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p %s -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.intervals, args.threads, sname, infile, outf, args.memory, args.threads, args.queue, jobname)
 			else:
 				if not args.memory:
 					args.memory = 10
@@ -219,6 +219,7 @@ p1.set_defaults(func=prep)
 p2 = s.add_parser('run', parents=[pp], help='run psmc/msmc')
 p2.add_argument('DIR')
 p2.add_argument('--geneflow', action='store_true', default = False, help = 'infer gene flow with msmc')
+p2.add_argument('-p', '--intervals', default = '6*1+7*2', help = 'time interval specification (psmc format)')
 p2.add_argument('--combined', action='store_true', default = False, help = 'run on all segsep files combined')
 p2.add_argument('-n', '--nfiles', type=int, default=0, help = 'number of segsep files to include')
 p2.add_argument('-t', '--threads', type=int, default=4, help = 'number of threads to use')
