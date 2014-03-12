@@ -155,7 +155,10 @@ def run(args): # run smc inference
 			infiles = [' '.join(infiles)]
 
 		for jf, infile in enumerate(infiles):
-			pref = os.path.basename(infile).replace('.segsep', '')
+			if args.combined:
+				pref = 'combined_%d' % args.nfiles
+			else:
+				pref = os.path.basename(infile).replace('.segsep', '')
 			sname = '%s.msmc' % pref
 			outf = sname + '.out'
 			jobname = ':'.join(('msmc', os.path.basename(os.path.normpath(args.DIR)), pref))
