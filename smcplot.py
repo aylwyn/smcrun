@@ -8,15 +8,14 @@ import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 
-#colist = ['0xFFFFB300', '0xFF803E75', '0xFFFF6800', '0xFFA6BDD7', '0xFFC10020', '0xFFCEA262', '0xFF817066', '0xFF007D34', '0xFFF6768E', '0xFF00538A', '0xFFFF7A5C', '0xFF53377A', '0xFFFF8E00', '0xFFB32851', '0xFFF4C800', '0xFF7F180D', '0xFF93AA00', '0xFF593315', '0xFFF13A13', '0xFF232C16']
-colist = [(0, 0, 1.0), (1.0, 0, 0), (0, 1.0, 0), (1.0, 1.0, 0), (1.0, 0, 1.0), (1.0, 0.5, 0.5), (0.5, 0.5, 0.5), (0.5, 0, 0), (1.0, 0.5, 0)]
-
 p = optparse.OptionParser()
 p.add_option('--hc', action='store_true', default = False)
 p.add_option('--colours', default = '')
+p.add_option('--title', default = '')
 p.add_option('--recycle_colours', action='store_true', default = False)
 p.add_option('--geneflow', action='store_true', default = False)
 p.add_option('--coalrates', action='store_true', default = False)
+p.add_option('--nescale', action='store_true', default = False)
 p.add_option('--showvals', action='store_true', default = False)
 p.add_option('--noplot', action='store_true', default = False)
 p.add_option('-m', '--msmcfile', default = [], action='append')
@@ -27,7 +26,7 @@ p.add_option('-u', '--mugen', type='float', default = 1.25e-8)
 p.add_option('-t', '--tgen', type='float', default = 25.0)
 p.add_option('--maxy', type='float', default = 0.0)
 p.add_option('-s', '--simfile', default='')
-p.add_option('-o', '--outname', default='psmc')
+p.add_option('-o', '--outname', default='')
 
 opt, args = p.parse_args()
 
@@ -44,6 +43,8 @@ if opt.colours:
 	coldict = {'gorberber': 'red', 'gorbergra': 'green', 'gorgorgor': 'blue'}
 else:
 	coldict = {}
+coalrates_col = {'l00': 'red', 'l01': 'green', 'l11': 'blue'}
+colist = [(0, 0, 1.0), (1.0, 0, 0), (0, 1.0, 0), (1.0, 1.0, 0), (1.0, 0, 1.0), (1.0, 0.5, 0.5), (0.5, 0.5, 0.5), (0.5, 0, 0), (1.0, 0.5, 0)]
 
 print('Scaling with mu = %e per gen and tgen = %.1f' % (opt.mugen, opt.tgen))
 #for rfile in glob.glob(os.path.join(rdir, dpref+'*.[1-7].msmc.final.txt')):
@@ -61,8 +62,8 @@ for ir, rfile in enumerate(opt.msmcfile):
 
 	if coldict:
 		icol = coldict[spname]
-	else:
-		icol = colist[ic]
+#	else:
+#		icol = colist[ic]
 	ic += 1
 
 	rx = opt.tgen*(tb.ix[:,1])/opt.mugen
@@ -70,9 +71,11 @@ for ir, rfile in enumerate(opt.msmcfile):
 	li = len(rx) - 1
 	if opt.coalrates:
 		for ncol, lab in [(3, 'l00'), (4, 'l01'), (5, 'l11')]:#, (3, 'l00')] 
-			ry = tb.ix[:,ncol]
-#			ry = (1/tb.ix[:,ncol])/(2*opt.mugen)
-			plt.step(rx, ry, label = lab)
+			if opt.nescale:
+				ry = (1/tb.ix[:,ncol])/(2*opt.mugen)
+			else:
+				ry = tb.ix[:,ncol]
+			plt.step(rx, ry, label = lab, color=coalrates_col[lab])
 #			plt.text(rx[li], ry[li], sname, fontsize=6)
 			maxy = max(maxy, max(ry))
 	else:
@@ -144,11 +147,24 @@ else:
 	if not opt.coalrates:
 		plt.ylabel(r'$N_e$')
 
-plt.legend(loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+if opt.coalrates:
+	plt.legend(('l00', 'l01', 'l11'), loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+else:
+	plt.legend(loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+
+if opt.title:
+	plt.title(opt.title, fontsize = 'small')
 
 if not opt.noplot:
 	if opt.hc:
-		fname = opt.outname + '.pdf'
+		if opt.outname:
+			fname = opt.outname + '.pdf'
+		else:
+			if opt.coalrates:
+				fname = 'msmc-coalrates' + '.pdf'
+			else:
+				fname = 'smc' + '.pdf'
+
 		sys.stderr.write('hardcopy in %s\n' % fname)
 		plt.savefig(fname)
 	else:
