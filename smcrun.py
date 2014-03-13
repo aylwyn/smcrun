@@ -29,13 +29,14 @@ def prep(args):
 			for line in open(args.vcf_list):
 				vcf_input.append(tuple(line.split()))
 
+		sample_input = []
 		if args.samples:
 			sample_input = args.samples.split(',')
-		else:
-			sample_input = []
 		if args.sample_list:
 			for line in open(args.sample_list):
 				sample_input.append(line.strip())
+		if not sample_input:
+			sample_input = ['*']
 
 		if args.allpairs:
 			samps = [','.join(x) for x in pairs(sample_input)]
@@ -93,15 +94,16 @@ def prep(args):
 				vcfname = os.path.basename(vcf).replace('.bgz', '').replace('.vcf', '')
 				jobname = ':'.join((subdir, sname, vcfname))
 				outname = '.'.join((vcfname, subdir))
-				if args.samples:
-					bcfview = 'bcftools view -s %s' % (samp)
-				else:
+				if samp == '*':
 					bcfview = 'bcftools view'
+				else:
+					bcfview = 'bcftools view -s %s' % (samp)
 				if repvcf:
 					tmprep = 'tmp/%s.rep.gz' % vcfname
-					cmd = '%s %s | gzip > %s' % (bcfview, repvcf, tmprep)
-					info('extracting replacement calls from %s' % (repvcf))
-					aosutils.subcall(cmd, args.sim, wait = True)
+					if not args.usetmp:
+						cmd = '%s %s | gzip > %s' % (bcfview, repvcf, tmprep)
+						info('extracting replacement calls from %s' % (repvcf))
+						aosutils.subcall(cmd, args.sim, wait = True)
 					reparg = '--replacecalls=%s' % tmprep
 				else:
 					reparg = ''
@@ -109,6 +111,8 @@ def prep(args):
 					cmd = 'bsub.py "%s %s | vcfutils_noinfo.pl vcf2fq | fq2psmcfa -" -o psmcfa/$s -M 2 -j %s' % (bcfview, vcf, outname, jobname)
 				else:
 					cmd = 'bsub.py "%s %s | vcf-proc.py --segsep --alleles %s" -o %s -M 1 -t 2 -j %s' % (bcfview, vcf, reparg, outname, jobname)
+				if args.replace:
+					cmd += ' --replace'
 				if args.bsim:
 					cmd += ' --sim'
 				info('submitting \'%s\'' % (jobname))
@@ -137,6 +141,8 @@ def run(args): # run smc inference
 			args.memory = 3
 		#TODO: cat args.nfiles psmcfa files into all.psmfca
 		cmd = 'bsub.py "psmc -N25 -t15 -r5 -p \'4+25*2+4+6\' psmcfa/all.psmcfa" -o %s -M %d -j %s' % (sname, outf, args.memory, jobname)
+		if args.replace:
+			cmd += ' --replace'
 		if args.bsim:
 			cmd += ' --sim'
 		if os.path.exists(outf) and not args.replace:
@@ -170,6 +176,8 @@ def run(args): # run smc inference
 				if not args.memory:
 					args.memory = 10
 				cmd = 'bsub.py "msmc -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.threads, sname, outf, infile, args.memory, args.threads, args.queue, jobname)
+			if args.replace:
+				cmd += ' --replace'
 			if args.bsim:
 				cmd += ' --sim'
 			if os.path.exists(outf) and not args.replace:
@@ -216,7 +224,7 @@ p12.add_argument('-s', '--samples', help='comma-separated list of sample names i
 p12.add_argument('-S', '--sample_list', help='file containing list of sample names (one per line)') 
 p12.add_argument('--allpairs', action='store_true', default = False, help='run on all pairs of sample names in list') 
 p12.add_argument('-f', '--vcf_list', help='file containing a list of input vcfs (one per line). For each one, a vcf of replacement calls may specified in a second column.') 
-#p12.add_argument('--phased', action='store_true', help='alleles are phased in input') 
+p12.add_argument('--usetmp', action='store_true', default=False, help='use existing replacement calls in tmp dir') 
 p1.set_defaults(func=prep)
 
 p2 = s.add_parser('run', parents=[pp], help='run psmc/msmc')
