@@ -38,9 +38,14 @@ for smcdir in opt.msmcdir:
 for smcdir in opt.psmcdir:
 	opt.psmcfile += glob.glob(os.path.join(smcdir, '*.psmc.0.txt'))
 
+#print(opt.msmcfile)
+
 if opt.colours:
 	# read coldict file TODO
-	coldict = {'gorberber': 'red', 'gorbergra': 'green', 'gorgorgor': 'blue'}
+	coldict = {}
+	for tok in (line.split() for line in open(opt.colours)):
+		coldict[tok[0]] = tok[1]
+#	coldict = {'gorberber': 'red', 'gorbergra': 'green', 'gorgorgor': 'blue'}
 else:
 	coldict = {}
 coalrates_col = {'l00': 'red', 'l01': 'green', 'l11': 'blue'}
@@ -54,17 +59,18 @@ ic = 0
 for ir, rfile in enumerate(opt.msmcfile):
 	tb=pd.read_table(rfile, header = 0)
 #	sname = os.path.splitext(os.path.basename(rfile))[0]
-	sname = rfile
+	sname = os.path.dirname(rfile)
 #	sname = '.'.join(os.path.basename(rfile).split('.')[0:2])
 #	sname = rfile.split('.')[0]
-	spname = sname.split('_')[0]
+#	spname = sname.split('_')[0]
 	print(sname)
 
 	if coldict:
-		icol = coldict[spname]
+		icol = coldict[sname]
 #	else:
 #		icol = colist[ic]
 	ic += 1
+	print(icol)
 
 	rx = opt.tgen*(tb.ix[:,1])/opt.mugen
 	rx[0] = max(rx[0], 1) # to account for log x axis
@@ -89,6 +95,12 @@ for ir, rfile in enumerate(opt.msmcfile):
 #	plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
 	maxx = max(maxx, max(rx))
 	maxy = max(maxy, max(ry))
+
+	plt.title(sname)
+	plt.xscale('log')
+	plt.xlim(1e3, 2e6)
+	plt.ylim(0, 1.1)
+	plt.show()
 
 if opt.recycle_colours:
 	ic = 0
@@ -147,10 +159,10 @@ else:
 	if not opt.coalrates:
 		plt.ylabel(r'$N_e$')
 
-if opt.coalrates:
-	plt.legend(('l00', 'l01', 'l11'), loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
-else:
-	plt.legend(loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+#if opt.coalrates:
+#	plt.legend(('l00', 'l01', 'l11'), loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+#else:
+#	plt.legend(loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 
 if opt.title:
 	plt.title(opt.title, fontsize = 'small')
