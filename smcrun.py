@@ -43,6 +43,12 @@ def prep(args):
 		else:
 			samps = [','.join(sample_input)]
 #			sname = os.path.splitext(vcf_input[0][0])[0]
+
+		if args.pseudodip:
+			pdip_arg = '--pseudodip'
+		if args.callmask:
+			cmask_arg = '--callmask=%s' % os.path.abspath(args.callmask)
+
 	elif args.s1name == 'ms':
 		ms_file = os.path.abspath(args.MS_FILE)
 		if not os.path.exists(ms_file):
@@ -108,9 +114,12 @@ def prep(args):
 				else:
 					reparg = ''
 				if args.psmc:
-					cmd = 'bsub.py "%s %s | vcfutils_noinfo.pl vcf2fq | fq2psmcfa -" -o psmcfa/$s -M 2 -j %s' % (bcfview, vcf, outname, jobname)
+					outarg = '--psmcfa'
+#					cmd = 'bsub.py "%s %s | vcfutils_noinfo.pl vcf2fq | fq2psmcfa -" -o psmcfa/$s -M 2 -j %s' % (bcfview, vcf, outname, jobname)
 				else:
-					cmd = 'bsub.py "%s %s | vcf-proc.py --segsep --alleles %s" -o %s -M 1 -t 2 -j %s' % (bcfview, vcf, reparg, outname, jobname)
+					outarg = '--segsep'
+#					cmd = 'bsub.py "%s %s | vcf-proc.py --segsep --alleles %s" -o %s -M 1 -t 2 -j %s' % (bcfview, vcf, reparg, outname, jobname)
+				cmd = 'bsub.py "%s %s | vcf-proc.py %s %s %s %s" -o %s -M 2 -j %s' % (bcfview, vcf, outarg, pdip_arg, cmask_arg, reparg, outname, jobname)
 				if args.replace:
 					cmd += ' --replace'
 				if args.bsim:
@@ -223,6 +232,8 @@ p12.add_argument('VCF_FILE', nargs='*')
 p12.add_argument('-s', '--samples', help='comma-separated list of sample names in VCF_FILE') 
 p12.add_argument('-S', '--sample_list', help='file containing list of sample names (one per line)') 
 p12.add_argument('--allpairs', action='store_true', default = False, help='run on all pairs of sample names in list') 
+p12.add_argument('--pseudodip', action='store_true', default = False, help='call vcf-proc.py with --pseudodip flag') 
+p12.add_argument('--callmask', default = '', help='call vcf-proc.py with --callmask=CALLMASK') 
 p12.add_argument('-f', '--vcf_list', help='file containing a list of input vcfs (one per line). For each one, a vcf of replacement calls may specified in a second column.') 
 p12.add_argument('--usetmp', action='store_true', default=False, help='use existing replacement calls in tmp dir') 
 p1.set_defaults(func=prep)
