@@ -143,13 +143,15 @@ def run(args): # run smc inference
 	os.chdir(args.DIR)
 	debug('In %s:' % args.DIR)
 	if args.psmc:
+		psmcfaf = glob.glob('psmcfa/*.psmcfa')[0]
 		sname = 'psmc'
-		jobname = ':'.join(('smc', sname))
+		jobname = ':'.join(('psmc', args.DIR))
 		outf = '%s.out' % sname
 		if not args.memory:
 			args.memory = 3
 		#TODO: cat args.nfiles psmcfa files into all.psmfca
-		cmd = 'bsub.py "psmc -N25 -t15 -r5 -p \'4+25*2+4+6\' psmcfa/all.psmcfa" -o %s -M %d -j %s' % (sname, outf, args.memory, jobname)
+		cmd = 'bsub.py "psmc -p \'%s\' %s" -o %s -M %d -j %s' % (args.intervals, psmcfaf, outf, args.memory, jobname)
+#		cmd = 'bsub.py "psmc -N25 -t15 -r5 -p \'%s\' %s" -o %s -M %d -j %s' % (args.intervals, psmcfaf, outf, args.memory, jobname)
 		if args.replace:
 			cmd += ' --replace'
 		if args.bsim:
@@ -180,7 +182,7 @@ def run(args): # run smc inference
 			if args.geneflow: # assume two samples
 				if not args.memory:
 					args.memory = 16
-				cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p %s -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.intervals, args.threads, sname, infile, outf, args.memory, args.threads, args.queue, jobname)
+				cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p \'%s\' -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.intervals, args.threads, sname, infile, outf, args.memory, args.threads, args.queue, jobname)
 			else:
 				if not args.memory:
 					args.memory = 10
