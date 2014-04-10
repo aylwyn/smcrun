@@ -118,13 +118,12 @@ for splot in inputlist:
 		splot.ptype = splot.ptype.replace('dir', 'file')
 		splot.path = resfiles[0]
 #TODO: add filename to splot.pname
-#		splot.show()
 		plotfiles.append(splot)
 
 maxy = 0
 maxx = 0
 for ir, splot in enumerate(plotfiles):
-#	print(splot.ptype)
+#	splot.show()
 	print(splot.pname)
 
 #		if coldict:
