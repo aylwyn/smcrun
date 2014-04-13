@@ -8,29 +8,29 @@ import os.path
 import glob
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import logging
 from logging import error, warning, info, debug, critical
 
 import aosutils
 
 class SMCPlot(object):
-	def __init__(self, ptype, path, pname, pcol='black'):#, pline)
+	def __init__(self, ptype, path, pname, pcol='black', pls='-', plw='1'):
 		self.ptype = ptype
 		self.path = path
 		self.pname = pname
 		self.pcol = pcol
-#		self.pline = pline
+		self.pls = pls
+		self.plw = plw
 
 	def show(self):
 		print("\t".join([self.ptype, self.path, self.pname, self.pcol]))
 
 p = optparse.OptionParser()
 p.add_option('--hc', action='store_true', default = False)
+p.add_option('--nodisplay', action='store_true', default = False)
 #p.add_option('--colours', default = '')
 p.add_option('--title', default = '')
-p.add_option('--recycle_colours', action='store_true', default = False)
+#p.add_option('--recycle_colours', action='store_true', default = False)
 p.add_option('--geneflow', action='store_true', default = False)
 p.add_option('--coalrates', action='store_true', default = False)
 p.add_option('--nescale', action='store_true', default = False)
@@ -52,6 +52,10 @@ p.add_option('-o', '--outname', default='')
 p.add_option('-v', '--verbose', action='store_true', default = False)
 
 opt, args = p.parse_args()
+
+if opt.nodisplay:
+	matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 #if len(args) > 0:
 #	rfiles = args
@@ -152,7 +156,7 @@ for ir, splot in enumerate(plotfiles):
 				ry = 2 * tb.ix[:,4] / (tb.ix[:,3] + tb.ix[:,5])
 			else:
 				ry = (1/tb.ix[:,3])/(2*opt.mugen)
-			plt.step(rx, ry, label = splot.pname, color=splot.pcol)
+			plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls=splot.pls, lw=splot.plw, where='post')
 	#	li = len(rx) - 1
 	#	plt.text(opt.tgen*(tb.ix[li,1])/opt.mugen, (1/tb.ix[li,3])/(2*opt.mugen), sname, color=icol, fontsize=6)
 	#	plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
@@ -165,7 +169,7 @@ for ir, splot in enumerate(plotfiles):
 		if opt.showvals:
 			for ix, iy in zip(rx, ry):
 				print('%f\t%f' % (ix, iy))
-		plt.step(rx, ry, label = splot.pname, color=splot.pcol)
+		plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls=splot.pls, lw=splot.plw, where='post')
 #		li = len(rx) - 1
 #		plt.text(rx[li], ry[li], splot.pname, color=splot.pcol, fontsize=6)
 
