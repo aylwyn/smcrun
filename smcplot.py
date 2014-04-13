@@ -7,6 +7,8 @@ import os
 import os.path
 import glob
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import logging
 from logging import error, warning, info, debug, critical
