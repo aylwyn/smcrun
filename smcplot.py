@@ -20,7 +20,7 @@ class SMCPlot(object):
 		self.pname = pname
 		self.pcol = pcol
 		self.pls = pls
-		self.plw = plw
+		self.plw = float(plw)
 
 	def show(self):
 		print("\t".join([self.ptype, self.path, self.pname, self.pcol]))
@@ -46,6 +46,7 @@ p.add_option('-P', '--psmcdir', default = [], action='append')
 p.add_option('-u', '--mugen', type='float', default = 1.25e-8)
 p.add_option('-t', '--tgen', type='float', default = 25.0)
 p.add_option('--maxy', type='float', default = 0.0)
+p.add_option('--legend', type='int', default = 0)
 p.add_option('-s', '--simfile', default='')
 p.add_option('-f', '--plotlist', default='')
 p.add_option('-o', '--outname', default='')
@@ -207,10 +208,10 @@ else:
 	if not opt.coalrates:
 		plt.ylabel(r'$N_e$')
 
-#if opt.coalrates:
-#	plt.legend(('l00', 'l01', 'l11'), loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
-#else:
-#	plt.legend(loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+if opt.coalrates:
+	plt.legend(('l00', 'l01', 'l11'), loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+elif opt.legend:
+	plt.legend(loc = opt.legend, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 
 if opt.title:
 	plt.title(opt.title, fontsize = 'small')
