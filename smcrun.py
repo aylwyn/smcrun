@@ -46,6 +46,9 @@ def prep(args):
 
 		if args.pseudodip:
 			pdip_arg = '--pseudodip'
+		else:
+			pdip_arg = ''
+
 		if args.callmask:
 			cmask_arg = '--callmask=%s' % os.path.abspath(args.callmask)
 
@@ -93,39 +96,59 @@ def prep(args):
 
 		# make segsep/psmcfa files
 		if args.s1name == 'vcf':
-			if args.vcf_list and not (args.sim or os.path.exists('tmp')):
-				os.mkdir('tmp')
+			if not args.memory:
+				args.memory = 3
 
-			for vcf, repvcf in vcf_input:
-				vcfname = os.path.basename(vcf).replace('.bgz', '').replace('.vcf', '')
+			if args.psmc:
+				outarg = '--psmcfa'
+			else:
+				outarg = '--segsep'
+
+			if args.concat:
+				vcfname = 'all'
 				jobname = ':'.join((subdir, sname, vcfname))
 				outname = '.'.join((vcfname, subdir))
+				vcfs =  ' '.join([x[0] for x in vcf_input])
+				jobname = ':'.join((subdir, sname))
 				if samp == '*':
-					bcfview = 'bcftools view'
+					bcfview = 'bcftools concat %s' % vcfs
 				else:
-					bcfview = 'bcftools view -s %s' % (samp)
-				if repvcf:
-					tmprep = 'tmp/%s.rep.gz' % vcfname
-					if not args.usetmp:
-						cmd = '%s %s | gzip > %s' % (bcfview, repvcf, tmprep)
-						info('extracting replacement calls from %s' % (repvcf))
-						aosutils.subcall(cmd, args.sim, wait = True)
-					reparg = '--replacecalls=%s' % tmprep
-				else:
-					reparg = ''
-				if args.psmc:
-					outarg = '--psmcfa'
-#					cmd = 'bsub.py "%s %s | vcfutils_noinfo.pl vcf2fq | fq2psmcfa -" -o psmcfa/$s -M 2 -j %s' % (bcfview, vcf, outname, jobname)
-				else:
-					outarg = '--segsep'
-#					cmd = 'bsub.py "%s %s | vcf-proc.py --segsep --alleles %s" -o %s -M 1 -t 2 -j %s' % (bcfview, vcf, reparg, outname, jobname)
-				cmd = 'bsub.py "%s %s | vcf-proc.py %s %s %s %s" -o %s -M 2 -j %s' % (bcfview, vcf, outarg, pdip_arg, cmask_arg, reparg, outname, jobname)
+					bcfview = 'bcftools concat %s | bcftools view -s %s - ' % (vcfs, samp)
+				cmd = 'bsub.py "%s | vcf-proc.py %s %s %s" -o %s -M %d -j %s' % (bcfview, outarg, pdip_arg, cmask_arg, outname, args.memory, jobname)
 				if args.replace:
 					cmd += ' --replace'
 				if args.bsim:
 					cmd += ' --sim'
 				info('submitting \'%s\'' % (jobname))
 				aosutils.subcall(cmd, args.sim, wait = True)
+			else:
+				if args.vcf_list and not (args.sim or os.path.exists('tmp')):
+					os.mkdir('tmp')
+
+				for vcf, repvcf in vcf_input:
+					vcfname = os.path.basename(vcf).replace('.bgz', '').replace('.vcf', '')
+					jobname = ':'.join((subdir, sname, vcfname))
+					outname = '.'.join((vcfname, subdir))
+					if samp == '*':
+						bcfview = 'bcftools view'
+					else:
+						bcfview = 'bcftools view -s %s' % (samp)
+					if repvcf:
+						tmprep = 'tmp/%s.rep.gz' % vcfname
+						if not args.usetmp:
+							cmd = '%s %s | gzip > %s' % (bcfview, repvcf, tmprep)
+							info('extracting replacement calls from %s' % (repvcf))
+							aosutils.subcall(cmd, args.sim, wait = True)
+						reparg = '--replacecalls=%s' % tmprep
+					else:
+						reparg = ''
+					cmd = 'bsub.py "%s %s | vcf-proc.py %s %s %s %s" -o %s -M %d -j %s' % (bcfview, vcf, outarg, pdip_arg, cmask_arg, reparg, outname, args.memory, jobname)
+					if args.replace:
+						cmd += ' --replace'
+					if args.bsim:
+						cmd += ' --sim'
+					info('submitting \'%s\'' % (jobname))
+					aosutils.subcall(cmd, args.sim, wait = True)
 		elif args.s1name == 'ms':
 			jobname = ':'.join(('ms2smc', sname))
 			if args.unphased:
@@ -219,6 +242,7 @@ pp.add_argument('--sim', action='store_true', default = False, help = 'dry run')
 pp.add_argument('-v', '--verbose', action='store_true', default = False)#, help = 'dry run')
 pp.add_argument('--debug', action='store_true', default = False, help=argparse.SUPPRESS)
 pp.add_argument('--bsim', action='store_true', default = False, help=argparse.SUPPRESS)
+pp.add_argument('-M', '--memory', type=int, default=0, help = 'GB of RAM to use')
 
 p = argparse.ArgumentParser()
 s = p.add_subparsers()#help='sub-command help')
@@ -235,6 +259,7 @@ p12.add_argument('-s', '--samples', help='comma-separated list of sample names i
 p12.add_argument('-S', '--sample_list', help='file containing list of sample names (one per line)') 
 p12.add_argument('--allpairs', action='store_true', default = False, help='run on all pairs of sample names in list') 
 p12.add_argument('--pseudodip', action='store_true', default = False, help='call vcf-proc.py with --pseudodip flag') 
+p12.add_argument('--concat', action='store_true', default = False, help='concatenate vcf files into single output (ignores replacement calls)') 
 p12.add_argument('--callmask', default = '', help='call vcf-proc.py with --callmask=CALLMASK') 
 p12.add_argument('-f', '--vcf_list', help='file containing a list of input vcfs (one per line). For each one, a vcf of replacement calls may specified in a second column.') 
 p12.add_argument('--usetmp', action='store_true', default=False, help='use existing replacement calls in tmp dir') 
@@ -248,7 +273,6 @@ p2.add_argument('--combined', action='store_true', default = False, help = 'run 
 p2.add_argument('-n', '--nfiles', type=int, default=0, help = 'number of segsep files to include')
 p2.add_argument('-t', '--threads', type=int, default=4, help = 'number of threads to use')
 p2.add_argument('-q', '--queue', default='normal', help = 'queue to use')
-p2.add_argument('-M', '--memory', type=int, default=0, help = 'GB of RAM to use')
 p2.set_defaults(func=run)
 
 p3 = s.add_parser('plot', parents=[pp], help='plot psmc/msmc results')
