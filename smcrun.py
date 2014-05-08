@@ -172,15 +172,19 @@ def run(args): # run smc inference
 		outf = '%s.out' % sname
 		if not args.memory:
 			args.memory = 3
+		if args.decode:
+			decarg = '-d'
+		else:
+			decarg = ''
 		#TODO: cat args.nfiles psmcfa files into all.psmfca
-		cmd = 'bsub.py "psmc -p \'%s\' %s" -o %s -M %d -j %s' % (args.intervals, psmcfaf, outf, args.memory, jobname)
+		cmd = 'bsub.py "psmc -p \'%s\' %s %s" -o %s -M %d -j %s' % (args.intervals, decarg, psmcfaf, outf, args.memory, jobname)
 #		cmd = 'bsub.py "psmc -N25 -t15 -r5 -p \'%s\' %s" -o %s -M %d -j %s' % (args.intervals, psmcfaf, outf, args.memory, jobname)
 		if args.replace:
 			cmd += ' --replace'
 		if args.bsim:
 			cmd += ' --sim'
 		if os.path.exists(outf) and not args.replace:
-			warning('%s/%s exists; use --replace' % (args.DIR, outf))
+			warning('%s exists in %s; use --replace' % (outf, args.DIR))
 		else:
 			info('submitting \'%s\'' % (jobname))
 			aosutils.subcall(cmd, args.sim, wait = True)
@@ -268,7 +272,8 @@ p1.set_defaults(func=prep)
 p2 = s.add_parser('run', parents=[pp], help='run psmc/msmc')
 p2.add_argument('DIR')
 p2.add_argument('--geneflow', action='store_true', default = False, help = 'infer gene flow with msmc')
-p2.add_argument('-p', '--intervals', default = '6*1+7*2', help = 'time interval specification (psmc format)')
+p2.add_argument('--decode', action='store_true', default = False, help = 'decode Ne (psmc)')
+p2.add_argument('-p', '--intervals', default = '6*1+7*2', help = 'time interval specification (psmc format); e.g. "4+25*2+4+6", "6*1+7*2"')
 p2.add_argument('--combined', action='store_true', default = False, help = 'run on all segsep files combined')
 p2.add_argument('-n', '--nfiles', type=int, default=0, help = 'number of segsep files to include')
 p2.add_argument('-t', '--threads', type=int, default=4, help = 'number of threads to use')
