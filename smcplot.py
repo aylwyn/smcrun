@@ -18,6 +18,8 @@ class SMCPlot(object):
 		self.ptype = ptype
 		self.path = path
 		self.pname = pname
+		if self.pname == '-':
+			self.pname = os.path.basename(self.path).replace('.smcdir', '')
 		self.pcol = pcol
 		self.pls = pls
 		self.plw = float(plw)
@@ -46,9 +48,10 @@ p.add_option('-P', '--psmcdir', default = [], action='append')
 p.add_option('-u', '--mugen', type='float', default = 1.25e-8)
 p.add_option('-t', '--tgen', type='float', default = 25.0)
 p.add_option('--maxy', type='float', default = 0.0)
+p.add_option('--maxx', type='float', default = 0.0)
 p.add_option('--legend', type='int', default = 0)
 p.add_option('-s', '--simfile', default='')
-p.add_option('-f', '--plotlist', default='')
+p.add_option('-f', '--plotlist', default='', help = 'Each line:  ptype, path, name, colour, linestyle, linewidth')
 p.add_option('-o', '--outname', default='')
 p.add_option('-v', '--verbose', action='store_true', default = False)
 
@@ -205,6 +208,10 @@ else:
 		plt.ylim(0, 1.1*maxy)
 	else:
 		plt.ylim(0, 1.1*opt.maxy)
+	if opt.maxx <= 0.0:
+		plt.xlim(0, 1.1*maxx)
+	else:
+		plt.xlim(0, 1.1*opt.maxx)
 	if not opt.coalrates:
 		plt.ylabel(r'$N_e$')
 
