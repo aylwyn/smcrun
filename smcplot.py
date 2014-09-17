@@ -14,15 +14,16 @@ from logging import error, warning, info, debug, critical
 import aosutils
 
 class SMCPlot(object):
-	def __init__(self, ptype, path, pname, pcol='black', pls='-', plw='1'):
+	def __init__(self, ptype, path, pname, pcol='black', pls='-', plw='1', palph='1.0'):
 		self.ptype = ptype
 		self.path = path
 		self.pname = pname
-		if self.pname == '-':
+		if self.pname == '.':
 			self.pname = os.path.basename(self.path).replace('.smcdir', '')
 		self.pcol = pcol
 		self.pls = pls
 		self.plw = float(plw)
+		self.palph = float(palph)
 
 	def show(self):
 		print("\t".join([self.ptype, self.path, self.pname, self.pcol]))
@@ -49,9 +50,10 @@ p.add_option('-u', '--mugen', type='float', default = 1.25e-8)
 p.add_option('-t', '--tgen', type='float', default = 25.0)
 p.add_option('--maxy', type='float', default = 0.0)
 p.add_option('--maxx', type='float', default = 0.0)
-p.add_option('--legend', type='int', default = 0)
+p.add_option('--legend', type='int', default = 0, help='0: no legend; else location specified as in matplotlib Legend()')
 p.add_option('-s', '--simfile', default='')
 p.add_option('-f', '--plotlist', default='', help = 'Each line:  ptype, path, name, colour, linestyle, linewidth')
+p.add_option('--plotlist_bold', default='', help = 'plot file for bold lines (format as PLOTLIST)')
 p.add_option('-o', '--outname', default='')
 p.add_option('-v', '--verbose', action='store_true', default = False)
 
@@ -65,9 +67,9 @@ import matplotlib.pyplot as plt
 #	rfiles = args
 loglevel = logging.WARNING
 if opt.verbose:
-    loglevel = logging.INFO
+	loglevel = logging.INFO
 #if opt.debug:
-#    loglevel = logging.DEBUG
+#	loglevel = logging.DEBUG
 logging.basicConfig(format = '%(module)s:%(lineno)d:%(levelname)s: %(message)s', level = loglevel)
 
 info('Scaling with mu = %e per gen and tgen = %.1f' % (opt.mugen, opt.tgen))
@@ -75,8 +77,17 @@ info('Scaling with mu = %e per gen and tgen = %.1f' % (opt.mugen, opt.tgen))
 inputlist = []
 plotfiles = []
 
+if opt.plotlist_bold:
+	lalph = '0.3'
+else:
+	lalph = '1.0'
+
 if opt.plotlist:
 	for tok in (line.split() for line in open(opt.plotlist)):
+		inputlist.append(SMCPlot(*tok + [lalph]))
+
+if opt.plotlist_bold:
+	for tok in (line.split() for line in open(opt.plotlist_bold)):
 		inputlist.append(SMCPlot(*tok))
 
 msmcdirs = opt.msmcdir
@@ -134,7 +145,7 @@ maxy = 0
 maxx = 0
 for ir, splot in enumerate(plotfiles):
 #	splot.show()
-	print(splot.pname)
+	info(splot.pname)
 
 #		if coldict:
 #			icol = coldict[sname]
@@ -160,7 +171,7 @@ for ir, splot in enumerate(plotfiles):
 				ry = 2 * tb.ix[:,4] / (tb.ix[:,3] + tb.ix[:,5])
 			else:
 				ry = (1/tb.ix[:,3])/(2*opt.mugen)
-			plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls=splot.pls, lw=splot.plw, where='post')
+			plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls=splot.pls, lw=splot.plw, where='post', alpha=splot.palph)
 	#	li = len(rx) - 1
 	#	plt.text(opt.tgen*(tb.ix[li,1])/opt.mugen, (1/tb.ix[li,3])/(2*opt.mugen), sname, color=icol, fontsize=6)
 	#	plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
@@ -173,7 +184,7 @@ for ir, splot in enumerate(plotfiles):
 		if opt.showvals:
 			for ix, iy in zip(rx, ry):
 				print('%f\t%f' % (ix, iy))
-		plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls=splot.pls, lw=splot.plw, where='post')
+		plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls=splot.pls, lw=splot.plw, where='post', alpha=splot.palph)
 #		li = len(rx) - 1
 #		plt.text(rx[li], ry[li], splot.pname, color=splot.pcol, fontsize=6)
 
@@ -182,7 +193,7 @@ for ir, splot in enumerate(plotfiles):
 
 		rx = tb.ix[:,0]
 		ry = tb.ix[:,1]
-		plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls='--', where='post')
+		plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls='--', where='post', alpha=splot.palph)
 #		li = len(rx) - 1
 #		plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
 
@@ -215,13 +226,15 @@ else:
 	if not opt.coalrates:
 		plt.ylabel(r'$N_e$')
 
+if opt.title:
+	plt.title(opt.title)#, fontsize = 'small')
+
 if opt.coalrates:
 	plt.legend(('l00', 'l01', 'l11'), loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 elif opt.legend:
-	plt.legend(loc = opt.legend, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+	plt.legend(loc = opt.legend)#, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 
-if opt.title:
-	plt.title(opt.title, fontsize = 'small')
+plt.tight_layout()
 
 if not opt.noplot:
 	if opt.hc:
