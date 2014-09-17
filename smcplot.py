@@ -63,8 +63,6 @@ if opt.nodisplay:
 	matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-#if len(args) > 0:
-#	rfiles = args
 loglevel = logging.WARNING
 if opt.verbose:
 	loglevel = logging.INFO
@@ -138,19 +136,12 @@ for splot in inputlist:
 			error('multiple results files found in %s; using first' % splot.path)
 		splot.ptype = splot.ptype.replace('dir', 'file')
 		splot.path = resfiles[0]
-#TODO: add filename to splot.pname
 		plotfiles.append(splot)
 
 maxy = 0
 maxx = 0
 for ir, splot in enumerate(plotfiles):
-#	splot.show()
 	info(splot.pname)
-
-#		if coldict:
-#			icol = coldict[sname]
-#		ic += 1
-#		print(icol)
 
 	if splot.ptype == 'msmcfile':
 		tb=pd.read_table(splot.path, header = 0)
@@ -200,16 +191,8 @@ for ir, splot in enumerate(plotfiles):
 	maxx = max(maxx, max(rx))
 	maxy = max(maxy, max(ry))
 
-#	plt.title(sname)
-#	plt.xscale('log')
-#	plt.xlim(1e3, 2e6)
-#	plt.ylim(0, 1.1)
-#	plt.show()
-
 plt.xscale('log')
 plt.xlim(1e3, maxx**1.1)
-#plt.xlim(1e3, 1e7)
-#plt.ylim(0, 40e3)
 plt.xlabel('Time (y)')
 if opt.geneflow:
 	plt.ylim(0, 1.1)
