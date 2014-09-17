@@ -215,7 +215,11 @@ if opt.title:
 if opt.coalrates:
 	plt.legend(('l00', 'l01', 'l11'), loc = 2, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 elif opt.legend:
-	plt.legend(loc = opt.legend)#, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
+	# remove duplicate labels
+	handles, labels = plt.gca().get_legend_handles_labels()
+	by_label = dict(zip(labels, handles))
+	plt.legend(by_label.values(), by_label.keys(), loc=opt.legend)
+#	plt.legend(loc = opt.legend)#, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 
 plt.tight_layout()
 
