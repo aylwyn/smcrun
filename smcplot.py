@@ -228,7 +228,8 @@ elif opt.legend:
 	# remove duplicate labels
 	handles, labels = plt.gca().get_legend_handles_labels()
 	by_label = dict(zip(labels, handles))
-	plt.legend(by_label.values(), by_label.keys(), loc=opt.legend)
+	lg = plt.legend(by_label.values(), by_label.keys(), loc=opt.legend)
+	lg.get_frame().set_linewidth(0.5) 
 #	plt.legend(loc = opt.legend)#, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 
 #plt.tight_layout()
