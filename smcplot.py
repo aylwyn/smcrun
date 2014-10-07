@@ -22,7 +22,7 @@ class SMCPlot(object):
 			self.pname = os.path.basename(self.path).replace('.smcdir', '')
 		self.pcol = pcol
 		self.pls = pls
-		self.plw = float(plw)
+		self.plw = float(plw)/2.0
 		self.palph = float(palph)
 
 	def show(self):
@@ -66,11 +66,17 @@ import matplotlib.pyplot as plt
 loglevel = logging.WARNING
 if opt.verbose:
 	loglevel = logging.INFO
-#if opt.debug:
-#	loglevel = logging.DEBUG
 logging.basicConfig(format = '%(module)s:%(lineno)d:%(levelname)s: %(message)s', level = loglevel)
 
-info('Scaling with mu = %e per gen and tgen = %.1f' % (opt.mugen, opt.tgen))
+if opt.run_psmcplot or opt.msmcdir or opt.msmcfile:
+	info('Scaling with mu = %e per gen and tgen = %.1f' % (opt.mugen, opt.tgen))
+
+if opt.hc:
+	from matplotlib import rcParams
+	rcParams['axes.labelsize'] = 6
+	rcParams['xtick.labelsize'] = 6
+	rcParams['ytick.labelsize'] = 6
+	rcParams['legend.fontsize'] = 6
 
 inputlist = []
 plotfiles = []
@@ -138,6 +144,14 @@ for splot in inputlist:
 		splot.path = resfiles[0]
 		plotfiles.append(splot)
 
+fig = plt.figure()
+if opt.hc:
+	fsize = [2.25, 2.25]
+	mar = [0.18, 0.15, 0.037, 0.036]
+	margins = [mar[0], mar[1], 1-mar[2]-mar[0], 1-mar[3]-mar[1]]
+	ax = plt.Axes(fig, margins)
+	fig.add_axes(ax)
+
 maxy = 0
 maxx = 0
 for ir, splot in enumerate(plotfiles):
@@ -171,13 +185,11 @@ for ir, splot in enumerate(plotfiles):
 		tb=pd.read_table(splot.path, header = None)
 
 		rx = tb.ix[:,0]
-		ry = 1e4*tb.ix[:,1]
+		ry = 1e4*tb.ix[:,1]/1e3
 		if opt.showvals:
 			for ix, iy in zip(rx, ry):
 				print('%f\t%f' % (ix, iy))
 		plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls=splot.pls, lw=splot.plw, where='post', alpha=splot.palph)
-#		li = len(rx) - 1
-#		plt.text(rx[li], ry[li], splot.pname, color=splot.pcol, fontsize=6)
 
 	if splot.ptype == 'simfile':
 		tb=pd.read_table(splot.path, header = None)
@@ -185,8 +197,6 @@ for ir, splot in enumerate(plotfiles):
 		rx = tb.ix[:,0]
 		ry = tb.ix[:,1]
 		plt.step(rx, ry, label = splot.pname, color=splot.pcol, ls='--', where='post', alpha=splot.palph)
-#		li = len(rx) - 1
-#		plt.text(rx[li], ry[li], sname, color=icol, fontsize=6)
 
 	maxx = max(maxx, max(rx))
 	maxy = max(maxy, max(ry))
@@ -207,7 +217,7 @@ else:
 	else:
 		plt.xlim(0, 1.1*opt.maxx)
 	if not opt.coalrates:
-		plt.ylabel(r'$N_e$')
+		plt.ylabel(r'$N_e/1000$')
 
 if opt.title:
 	plt.title(opt.title)#, fontsize = 'small')
@@ -221,10 +231,11 @@ elif opt.legend:
 	plt.legend(by_label.values(), by_label.keys(), loc=opt.legend)
 #	plt.legend(loc = opt.legend)#, prop={'size':8})#, ncol = 2), fontsize = 'xx-small')
 
-plt.tight_layout()
+#plt.tight_layout()
 
 if not opt.noplot:
 	if opt.hc:
+		fig.set_size_inches(fsize[0], fsize[1])
 		if opt.outname:
 			fname = opt.outname + '.pdf'
 		else:
