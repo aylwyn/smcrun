@@ -147,7 +147,7 @@ for splot in inputlist:
 fig = plt.figure()
 if opt.hc:
 	fsize = [2.25, 2.25]
-	mar = [0.18, 0.15, 0.037, 0.036]
+	mar = [0.15, 0.15, 0.037, 0.036]
 	margins = [mar[0], mar[1], 1-mar[2]-mar[0], 1-mar[3]-mar[1]]
 	ax = plt.Axes(fig, margins)
 	fig.add_axes(ax)
