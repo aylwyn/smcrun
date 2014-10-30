@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Aylwyn Scally 2014
 
 import sys
@@ -51,6 +51,8 @@ def prep(args):
 
 		if args.callmask:
 			cmask_arg = '--callmask=%s' % os.path.abspath(args.callmask)
+		else:
+			cmask_arg = ''
 
 	elif args.s1name == 'ms':
 		ms_file = os.path.abspath(args.MS_FILE)
@@ -298,8 +300,8 @@ if args.debug:
 logging.basicConfig(format = '%(module)s:%(lineno)d:%(levelname)s: %(message)s', level = loglevel)
 
 if args.bsub:
-    args.submit = 'submit.py bsub'
+	args.submit = 'submit.py bsub'
 else:
-    args.submit = 'submit.py nohup'
+	args.submit = 'submit.py nohup'
 
 args.func(args)
