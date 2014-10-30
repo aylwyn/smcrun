@@ -1,4 +1,4 @@
-#!/software/bin/python
+#!/usr/bin/python
 # Aylwyn Scally 2014
 
 import sys
@@ -114,7 +114,7 @@ def prep(args):
 					bcfview = 'bcftools concat %s' % vcfs
 				else:
 					bcfview = 'bcftools concat %s | bcftools view -s %s - ' % (vcfs, samp)
-				cmd = 'bsub.py "%s | vcf-proc.py %s %s %s" -o %s -M %d -j %s' % (bcfview, outarg, pdip_arg, cmask_arg, outname, args.memory, jobname)
+				cmd = '%s "%s | vcf-proc.py %s %s %s" -o %s -M %d -j %s' % (args.submit, bcfview, outarg, pdip_arg, cmask_arg, outname, args.memory, jobname)
 				if args.replace:
 					cmd += ' --replace'
 				if args.bsim:
@@ -142,7 +142,7 @@ def prep(args):
 						reparg = '--replacecalls=%s' % tmprep
 					else:
 						reparg = ''
-					cmd = 'bsub.py "%s %s | vcf-proc.py %s %s %s %s" -o %s -M %d -j %s' % (bcfview, vcf, outarg, pdip_arg, cmask_arg, reparg, outname, args.memory, jobname)
+					cmd = '%s "%s %s | vcf-proc.py %s %s %s %s" -o %s -M %d -j %s' % (args.submit, bcfview, vcf, outarg, pdip_arg, cmask_arg, reparg, outname, args.memory, jobname)
 					if args.replace:
 						cmd += ' --replace'
 					if args.bsim:
@@ -177,7 +177,7 @@ def run(args): # run smc inference
 		else:
 			decarg = ''
 		#TODO: cat args.nfiles psmcfa files into all.psmfca
-		cmd = 'bsub.py "psmc -p \'%s\' %s %s" -o %s -M %d -j %s' % (args.intervals, decarg, psmcfaf, outf, args.memory, jobname)
+		cmd = '%s "psmc -p \'%s\' %s %s" -o %s -M %d -j %s' % (args.submit, args.intervals, decarg, psmcfaf, outf, args.memory, jobname)
 #		cmd = 'bsub.py "psmc -N25 -t15 -r5 -p \'%s\' %s" -o %s -M %d -j %s' % (args.intervals, psmcfaf, outf, args.memory, jobname)
 		if args.replace:
 			cmd += ' --replace'
@@ -209,11 +209,11 @@ def run(args): # run smc inference
 			if args.geneflow: # assume two samples
 				if not args.memory:
 					args.memory = 16
-				cmd = 'bsub.py "msmc --fixedRecombination -P 0,0,1,1 -p \'%s\' -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.intervals, args.threads, sname, infile, outf, args.memory, args.threads, args.queue, jobname)
+				cmd = '%s "msmc --fixedRecombination -P 0,0,1,1 -p \'%s\' -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.submit, args.intervals, args.threads, sname, infile, outf, args.memory, args.threads, args.queue, jobname)
 			else:
 				if not args.memory:
 					args.memory = 10
-				cmd = 'bsub.py "msmc -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.threads, sname, outf, infile, args.memory, args.threads, args.queue, jobname)
+				cmd = '%s "msmc -t %d -o %s %s" -o %s -M %d -t %d -q %s -j %s' % (args.submit, args.threads, sname, outf, infile, args.memory, args.threads, args.queue, jobname)
 			if args.replace:
 				cmd += ' --replace'
 			if args.bsim:
@@ -241,6 +241,7 @@ def plot(args): # make plots
 
 pp = argparse.ArgumentParser(add_help=False)
 pp.add_argument('--psmc', action='store_true', default = False, help = 'using psmc')
+pp.add_argument('--bsub', action='store_true', default = False, help = 'submit jobs via bsub')
 pp.add_argument('--replace', action='store_true', default = False, help = 'replace existing files')
 pp.add_argument('--sim', action='store_true', default = False, help = 'dry run')
 pp.add_argument('-v', '--verbose', action='store_true', default = False)#, help = 'dry run')
@@ -295,5 +296,10 @@ if args.verbose:
 if args.debug:
 	loglevel = logging.DEBUG
 logging.basicConfig(format = '%(module)s:%(lineno)d:%(levelname)s: %(message)s', level = loglevel)
+
+if args.bsub:
+    args.submit = 'submit.py bsub'
+else:
+    args.submit = 'submit.py nohup'
 
 args.func(args)
