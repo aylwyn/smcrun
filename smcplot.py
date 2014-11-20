@@ -211,7 +211,7 @@ for ip, ppath in enumerate(args.plotlist):
 
 	plt.xscale('log')
 	plt.xlim(1e3, maxx**1.1)
-	plt.xlabel('Time (y)')
+	plt.xlabel('Time (years)')
 #	if args.geneflow:
 #		plt.ylim(0, 1.1)
 #		plt.ylabel(r'Relative coalescent rate')
