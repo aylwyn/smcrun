@@ -106,16 +106,21 @@ def prep(args):
 			else:
 				outarg = '--segsep'
 
-			if args.concat:
-				vcfname = 'all'
+			if args.concat or args.merge:
+				if args.concat:
+					vcfname = 'all_chrs'
+					bcfcmd = 'bcftools concat'
+				elif args.merge:
+					vcfname = 'all_samps'
+					bcfcmd = 'bcftools merge'
 				jobname = ':'.join((subdir, sname, vcfname))
 				outname = '.'.join((vcfname, subdir))
 				vcfs =  ' '.join([x[0] for x in vcf_input])
 				jobname = ':'.join((subdir, sname))
 				if samp == '*':
-					bcfview = 'bcftools concat %s' % vcfs
+					bcfview = '%s %s' % (bcfcmd, vcfs)
 				else:
-					bcfview = 'bcftools concat %s | bcftools view -s %s - ' % (vcfs, samp)
+					bcfview = '%s %s | bcftools view -s %s - ' % (bcfcmd, vcfs, samp)
 				cmd = '%s "%s | vcf-proc.py %s %s %s" -o %s -M %d -j %s' % (args.submit, bcfview, outarg, pdip_arg, cmask_arg, outname, args.memory, jobname)
 				if args.replace:
 					cmd += ' --replace'
@@ -266,7 +271,8 @@ p12.add_argument('-s', '--samples', help='comma-separated list of sample names i
 p12.add_argument('-S', '--sample_list', help='file containing list of sample names (one per line)') 
 p12.add_argument('--allpairs', action='store_true', default = False, help='run on all pairs of sample names in list') 
 p12.add_argument('--pseudodip', action='store_true', default = False, help='call vcf-proc.py with --pseudodip flag') 
-p12.add_argument('--concat', action='store_true', default = False, help='concatenate vcf files into single output (ignores replacement calls)') 
+p12.add_argument('--concat', action='store_true', default = False, help='concatenate input vcf files into single output (ignores replacement calls)') 
+p12.add_argument('--merge', action='store_true', default = False, help='merge input vcf files into single output (ignores replacement calls)') 
 p12.add_argument('--callmask', default = '', help='call vcf-proc.py with --callmask=CALLMASK') 
 p12.add_argument('-f', '--vcf_list', help='file containing a list of input vcfs (one per line). For each one, a vcf of replacement calls may specified in a second column.') 
 p12.add_argument('--usetmp', action='store_true', default=False, help='use existing replacement calls in tmp dir') 
