@@ -30,7 +30,7 @@ class SMCPlot(object):
 
 p = argparse.ArgumentParser()
 p.add_argument('--hc', action='store_true', default = False)
-p.add_argument('--nodisplay', action='store_true', default = False)
+#p.add_argument('--nodisplay', action='store_true', default = False)
 p.add_argument('--title', default = '')
 #p.add_argument('--geneflow', action='store_true', default = False)
 #p.add_argument('--coalrates', action='store_true', default = False)
@@ -58,7 +58,9 @@ p.add_argument('-v', '--verbose', action='store_true', default = False)
 
 args = p.parse_args()
 
-if args.nodisplay:
+if not os.environ.get('DISPLAY'):
+#if args.nodisplay or not os.environ.get('DISPLAY'):
+    args.hc = True
 	matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
