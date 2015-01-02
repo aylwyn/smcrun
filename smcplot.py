@@ -52,7 +52,7 @@ p.add_argument('--legend', type=int, default = 0, help='<0: no legend; else loca
 p.add_argument('--label', default='')
 p.add_argument('orient', nargs='?', choices=['vertical', 'horizontal'], default='vertical')
 #p.add_argument('-s', '--simfile', default='')
-p.add_argument('-f', '--plotlist', nargs = '*', default='', help = 'Each line:  ptype, path, name, colour, linestyle, linewidth')
+p.add_argument('-f', '--plotfile', nargs = '*', default='', help = 'Initial lines can specify maxx, maxy, legend, label; then each line:  ptype, path, name, colour, linestyle, linewidth, alpha')
 p.add_argument('-o', '--outname', default='smc')
 p.add_argument('-v', '--verbose', action='store_true', default = False)
 
@@ -60,7 +60,8 @@ args = p.parse_args()
 
 if not os.environ.get('DISPLAY'):
 #if args.nodisplay or not os.environ.get('DISPLAY'):
-    args.hc = True
+	info('no display detected so using hardcopy output')
+	args.hc = True
 	matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -72,14 +73,14 @@ logging.basicConfig(format = '%(module)s:%(lineno)d:%(levelname)s: %(message)s',
 if args.run_psmcplot:# or args.msmcdir or args.msmcfile:
 	info('Scaling with mu = %e per gen and tgen = %.1f' % (args.mugen, args.tgen))
 
-nplots = len(args.plotlist)
+nplots = len(args.plotfile)
 
 if args.hc:
 	from matplotlib import rcParams
 	rcParams['axes.labelsize'] = 6
 	rcParams['xtick.labelsize'] = 6
 	rcParams['ytick.labelsize'] = 6
-	rcParams['legend.fontsize'] = 6
+	rcParams['legend.fontsize'] = 5
 	fsize = [2.25, 2.25*nplots]
 
 if args.orient == 'vertical':
@@ -89,7 +90,7 @@ elif args.orient ==  'horizontal':
 axv = ax.reshape(-1)
 
 sdir = os.path.abspath('.')
-for ip, ppath in enumerate(args.plotlist):
+for ip, ppath in enumerate(args.plotfile):
 	os.chdir(sdir)
 	pdir, pfile = os.path.split(ppath)
 	if pdir:
@@ -98,7 +99,11 @@ for ip, ppath in enumerate(args.plotlist):
 
 	inputlist = []
 	plotfiles = []
-	for tok in (line.split() for line in open(pfile)):
+#	for tok in (line.split('#', 1)[0].split() for line in open(pfile)):
+	for line in open(pfile):
+		tok = line.split('#', 1)[0].split() # strip comments
+		if not tok:
+			continue
 		if tok[0].startswith('maxx'):
 			args.maxx = float(tok[1])
 		elif tok[0].startswith('maxy'):
@@ -108,6 +113,7 @@ for ip, ppath in enumerate(args.plotlist):
 		elif tok[0].startswith('label'):
 			args.label = tok[1]
 		else:
+#			print(tok)
 			inputlist.append(SMCPlot(*tok))
 
 	#msmcdirs = args.msmcdir
@@ -227,7 +233,7 @@ for ip, ppath in enumerate(args.plotlist):
 	else:
 		plt.xlim(0, 1.1*args.maxx)
 #	if not args.coalrates:
-	plt.ylabel(r'$N_e/1000$')
+	plt.ylabel(r'$N_e/1000$', labelpad = 2)
 
 	if args.title:
 		plt.title(args.title)#, fontsize = 'small')
@@ -247,7 +253,8 @@ for ip, ppath in enumerate(args.plotlist):
 
 os.chdir(sdir)
 
-plt.subplots_adjust(left=0.35/fsize[0],bottom=0.375/fsize[1], right=1 - 0.075/fsize[0], top= 1 - 0.075/fsize[1], hspace = 0.25)
+if args.hc:
+	plt.subplots_adjust(left=0.35/fsize[0],bottom=0.375/fsize[1], right=1 - 0.075/fsize[0], top= 1 - 0.075/fsize[1], hspace = 0.25)
 
 if not args.noplot:
 	if args.hc:
