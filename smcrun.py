@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Aylwyn Scally 2014
+# Aylwyn Scally 2015
 
 import sys
 import argparse
@@ -22,27 +22,39 @@ def pairs(plist):
 
 def prep(args):
 	debug(args)
-	# make dir
+	callmask = 'callmask.bed.gz'
+
+	class Sample(object):
+		def __init__(self, names, masks = []):
+			self.names = names
+			self.masks = masks
+		
+		def __add__(self, other):
+			return(Sample(self.names + other.names, self.masks + other.masks))
+
+
 	if args.s1name == 'vcf':
 		vcf_input = [(os.path.abspath(x), '') for x in args.VCF_FILE]
 		if args.vcf_list:
 			for line in open(args.vcf_list):
 				vcf_input.append(tuple(line.split()))
 
-		sample_input = []
+		inputsamps = []
 		if args.samples:
-			sample_input = args.samples.split(',')
+			inputsamps = [Sample([x]) for x in args.samples.split(',')]
 		if args.sample_list:
-			for line in open(args.sample_list):
-				sample_input.append(line.strip())
-		if not sample_input:
-			sample_input = ['*']
+			for tok in (line.split() for line in open(args.sample_list)):
+				inputsamps.append(Sample(tok[0:1], tok[1:]))
+		if not inputsamps:
+			inputsamps = [Sample(['*'])]
 
+		runsamps = []
 		if args.allpairs:
-			samps = [','.join(x) for x in pairs(sample_input)]
+			runsamps = [pair[0] + pair[1] for pair in pairs(inputsamps)]
 		else:
-			samps = [','.join(sample_input)]
-#			sname = os.path.splitext(vcf_input[0][0])[0]
+			runsamps = [inputsamps[0]]
+			for samp in inputsamps[1:]:
+				runsamps[0] += samp
 
 		if args.pseudodip:
 			pdip_arg = '--pseudodip'
@@ -50,25 +62,25 @@ def prep(args):
 			pdip_arg = ''
 
 		if args.callmask:
-			cmask_arg = '--callmask=%s' % os.path.abspath(args.callmask)
-		else:
-			cmask_arg = ''
+			for samp in runsamps:
+				samp.masks.append(os.path.abspath(args.callmask))
 
 	elif args.s1name == 'ms':
 		ms_file = os.path.abspath(args.MS_FILE)
 		if not os.path.exists(ms_file):
 			error('No such file: %s' % ms_file)
 			return(2)
-		samps = [ms_file]
+		runsamps = [Sample([ms_file])]
 
-	debug('\n'.join(samps))
+	debug('\n'.join([','.join(x.names) for x in runsamps]))
+	debug('\n'.join([','.join(x.masks) for x in runsamps]))
 	rdir = os.path.abspath('.')
-	for samp in samps:
+	for samp in runsamps:
 		os.chdir(rdir)
 		if args.s1name == 'vcf':
-			sname = '-'.join([os.path.splitext(os.path.basename(x))[0] for x in samp.split(',')])
+			sname = '-'.join([os.path.splitext(os.path.basename(x))[0] for x in samp.names])
 		elif args.s1name == 'ms':
-			sname = os.path.basename(samp)
+			sname = os.path.basename(samp.names[0])
 			if args.unphased:
 				sname += '.unphased'
 
@@ -96,6 +108,17 @@ def prep(args):
 		if os.path.exists(subdir):
 			os.chdir(subdir)
 
+		# mask argument (make merged mask if necessary)
+		if len(samp.masks) > 1:
+			mrgcmd = 'bedtools merge %s | gzip > %s' % (' '.join(['-i ' + x for x in samp.masks]), callmask)
+			info('merging callmask files for %s' % (sname))
+			aosutils.subcall(mrgcmd, args.sim, wait = True)
+			cmask_arg = '--callmask=%s' % callmask
+		elif len(samp.masks) == 1:
+			cmask_arg = '--callmask=%s' % samp.masks[0]
+		else:
+			cmask_arg = ''
+
 		# make segsep/psmcfa files
 		if args.s1name == 'vcf':
 			if not args.memory:
@@ -117,10 +140,10 @@ def prep(args):
 				outname = '.'.join((vcfname, subdir))
 				vcfs =  ' '.join([x[0] for x in vcf_input])
 				jobname = ':'.join((subdir, sname))
-				if samp == '*':
+				if samp.names[0] == '*':
 					bcfview = '%s %s' % (bcfcmd, vcfs)
 				else:
-					bcfview = '%s %s | bcftools view -s %s - ' % (bcfcmd, vcfs, samp)
+					bcfview = '%s %s | bcftools view -s %s - ' % (bcfcmd, vcfs, ','.join(samp.names))
 				cmd = '%s "%s | vcf-proc.py %s %s %s" -o %s -M %d -j %s' % (args.submit, bcfview, outarg, pdip_arg, cmask_arg, outname, args.memory, jobname)
 				if args.replace:
 					cmd += ' --replace'
@@ -136,10 +159,10 @@ def prep(args):
 					vcfname = os.path.basename(vcf).replace('.bgz', '').replace('.vcf', '')
 					jobname = ':'.join((subdir, sname, vcfname))
 					outname = '.'.join((vcfname, subdir))
-					if samp == '*':
+					if samp.names[0] == '*':
 						bcfview = 'bcftools view'
 					else:
-						bcfview = 'bcftools view -s %s' % (samp)
+						bcfview = 'bcftools view -s %s' % (','.join(samp.names))
 					if repvcf:
 						tmprep = 'tmp/%s.rep.gz' % vcfname
 						if not args.usetmp:
@@ -163,11 +186,12 @@ def prep(args):
 			else:
 				phasedarg = ''
 			if args.psmc:
-				cmd = 'ms2smc.py -l 1e7 %s --chrlen=%d --output=psmcfa %s' % (samp, args.chrlen, phasedarg)
+				cmd = 'ms2smc.py -l 1e7 %s --chrlen=%d --output=psmcfa %s' % (samp.names[0], args.chrlen, phasedarg)
 			else:
-				cmd = 'ms2smc.py -l 1e7 %s --chrlen=%d %s | awk \'{print > $1".segsep"}\'' % (samp, args.chrlen, phasedarg)
+				cmd = 'ms2smc.py -l 1e7 %s --chrlen=%d %s | awk \'{print > $1".segsep"}\'' % (samp.names[0], args.chrlen, phasedarg)
 			info('running \'%s\'' % (jobname))
 			aosutils.subcall(cmd, args.sim, wait = True)
+
 
 def run(args): # run smc inference
 	os.chdir(args.DIR)
@@ -268,12 +292,12 @@ p11.add_argument('--unphased', action='store_true', default = False, help='allel
 p12 = s1.add_parser('vcf', parents=[pp])#, help='prep help')
 p12.add_argument('VCF_FILE', nargs='*') 
 p12.add_argument('-s', '--samples', help='comma-separated list of sample names in VCF_FILE') 
-p12.add_argument('-S', '--sample_list', help='file containing list of sample names (one per line)') 
+p12.add_argument('-S', '--sample_list', help='file containing list of sample names and (optionally) paths to mask files of uncallable regions') 
 p12.add_argument('--allpairs', action='store_true', default = False, help='run on all pairs of sample names in list') 
 p12.add_argument('--pseudodip', action='store_true', default = False, help='call vcf-proc.py with --pseudodip flag') 
-p12.add_argument('--concat', action='store_true', default = False, help='concatenate input vcf files into single output (ignores replacement calls)') 
-p12.add_argument('--merge', action='store_true', default = False, help='merge input vcf files into single output (ignores replacement calls)') 
-p12.add_argument('--callmask', default = '', help='call vcf-proc.py with --callmask=CALLMASK') 
+p12.add_argument('--concat', action='store_true', default = False, help='concatenate input vcf files into single output (i.e. combine chromosomes; ignores replacement calls)') 
+p12.add_argument('--merge', action='store_true', default = False, help='merge input vcf files into single output (i.e. combine samples; ignores replacement calls)') 
+p12.add_argument('--callmask', default = '', help='call vcf-proc.py with --callmask=CALLMASK of uncallable regions applied to all samples (Note: this is additional to any masks specified via a SAMPLE_LIST') 
 p12.add_argument('-f', '--vcf_list', help='file containing a list of input vcfs (one per line). For each one, a vcf of replacement calls may specified in a second column.') 
 p12.add_argument('--usetmp', action='store_true', default=False, help='use existing replacement calls in tmp dir') 
 p1.set_defaults(func=prep)
