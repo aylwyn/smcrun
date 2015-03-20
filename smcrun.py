@@ -56,10 +56,11 @@ def prep(args):
 			for samp in inputsamps[1:]:
 				runsamps[0] += samp
 
+		vcfproc_opt = ''
 		if args.pseudodip:
-			pdip_arg = '--pseudodip'
-		else:
-			pdip_arg = ''
+			vcfproc_opt += '--pseudodip'
+		if args.haploid:
+			vcfproc_opt += ' --haploid'
 
 		if args.callmask:
 			for samp in runsamps:
@@ -74,6 +75,7 @@ def prep(args):
 
 	debug('\n'.join([','.join(x.names) for x in runsamps]))
 	debug('\n'.join([','.join(x.masks) for x in runsamps]))
+
 	rdir = os.path.abspath('.')
 	for samp in runsamps:
 		os.chdir(rdir)
@@ -144,7 +146,7 @@ def prep(args):
 					bcfview = '%s %s' % (bcfcmd, vcfs)
 				else:
 					bcfview = '%s %s | bcftools view -s %s - ' % (bcfcmd, vcfs, ','.join(samp.names))
-				cmd = '%s "%s | vcf-proc.py %s %s %s" -o %s -M %d -j %s' % (args.submit, bcfview, outarg, pdip_arg, cmask_arg, outname, args.memory, jobname)
+				cmd = '%s "%s | vcf-proc.py %s %s %s" -o %s -M %d -j %s' % (args.submit, bcfview, outarg, vcfproc_opt, cmask_arg, outname, args.memory, jobname)
 				if args.replace:
 					cmd += ' --replace'
 				if args.bsim:
@@ -172,7 +174,7 @@ def prep(args):
 						reparg = '--replacecalls=%s' % tmprep
 					else:
 						reparg = ''
-					cmd = '%s "%s %s | vcf-proc.py %s %s %s %s" -o %s -M %d -j %s' % (args.submit, bcfview, vcf, outarg, pdip_arg, cmask_arg, reparg, outname, args.memory, jobname)
+					cmd = '%s "%s %s | vcf-proc.py %s %s %s %s" -o %s -M %d -j %s' % (args.submit, bcfview, vcf, outarg, vcfproc_opt, cmask_arg, reparg, outname, args.memory, jobname)
 					if args.replace:
 						cmd += ' --replace'
 					if args.bsim:
@@ -294,7 +296,8 @@ p12.add_argument('VCF_FILE', nargs='*')
 p12.add_argument('-s', '--samples', help='comma-separated list of sample names in VCF_FILE') 
 p12.add_argument('-S', '--sample_list', help='file containing list of sample names and (optionally) paths to mask files of uncallable regions') 
 p12.add_argument('--allpairs', action='store_true', default = False, help='run on all pairs of sample names in list') 
-p12.add_argument('--pseudodip', action='store_true', default = False, help='call vcf-proc.py with --pseudodip flag') 
+p12.add_argument('--pseudodip', action='store_true', default = False, help='Combine sample pairs into pseudo-diploid chromosomes (calls vcf-proc.py with --pseudodip flag)') 
+p12.add_argument('--haploid', action='store_true', default = False, help='Assume input vcf calls are haploid (call vcf-proc.py with --haploid flag)') 
 p12.add_argument('--concat', action='store_true', default = False, help='concatenate input vcf files into single output (i.e. combine chromosomes; ignores replacement calls)') 
 p12.add_argument('--merge', action='store_true', default = False, help='merge input vcf files into single output (i.e. combine samples; ignores replacement calls)') 
 p12.add_argument('--callmask', default = '', help='call vcf-proc.py with --callmask=CALLMASK of uncallable regions applied to all samples (Note: this is additional to any masks specified via a SAMPLE_LIST') 
