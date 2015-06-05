@@ -5,6 +5,7 @@ import sys
 import getopt
 import optparse
 import os.path
+import numpy as np
 import logging
 from logging import error, warning, info, debug, critical
 
@@ -14,7 +15,6 @@ logging.basicConfig(format = '%(module)s:%(lineno)d:%(levelname)s: %(message)s',
 
 #indivs = 2
 binsize = 100
-indivsep = ''
 
 #def usage():
 ##	print '''usage: %s [-l loci] [-i individuals_per_population] [-o output] ms_cmd
@@ -26,7 +26,10 @@ p.add_option('-l', '--length', default = '10e3', help = 'seqlen for converting m
 p.add_option('--output', action='store', type = 'choice', choices = ['segsep', 'psmcfa'], default = 'segsep', help = 'output format (segsep, psmcfa)')
 p.add_option('--onechr', action='store', help = 'output sites on one chromosome')
 p.add_option('--chrlen', default = '0', help = 'output sites on multiple chromosomes of length CHRLEN (split using awk \'{print > $1".segsep"}\')')
-p.add_option('--unphased', action='store_true', default = False, help = 'keep haplotype phasing')
+p.add_option('--phasecombs', action='store_true', default = False, help = 'output all diploid phase combinations (assume unphased input)')
+p.add_option('--unphased', action='store_true', default = False, help = 'output diploid genotypes')
+p.add_option('--hetcount', action='store_true', default = False, help = 'count hets in each individual')
+p.add_option('--indivsep', default = '', help = 'separator between individuals')
 opt, args = p.parse_args()
 
 opt.length = eval(opt.length)
@@ -42,6 +45,9 @@ opt.chrlen = eval(opt.chrlen)
 
 def genotype(al1, al2):
 	return(''.join(sorted([al1, al2])))
+
+def het(al1, al2):
+	return(al1 != al2)
 
 def hapsitetypes(n):
 # haploid allele combinations
@@ -111,7 +117,7 @@ else:
 j = 0
 chrseq = []
 nchrs = int(inputf.next().split()[1])
-#indivs = nchrs/2
+indivs = nchrs/2
 if nchrs % 2:
 	error('odd number of input chrs')
 	sys.exit(2)
@@ -142,10 +148,19 @@ for line in inputf:
 		for indiv in range(nchrs):
 			chrseq.append(inputf.next().strip())
 		nsites = len(chrseq[0])
-		if not opt.unphased:
-			siteseq = [indivsep.join([''.join([chrseq[x][s], chrseq[x+1][s]]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
+
+		if opt.phasecombs:
+			siteseq = [','.join(phasecombs([genotype(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)], sep=opt.indivsep)) for s in range(nsites)]
 		else:
-			siteseq = [','.join(phasecombs([genotype(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)], sep=indivsep)) for s in range(nsites)]
+			if opt.unphased:
+				siteseq = [opt.indivsep.join([genotype(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
+			else:
+				siteseq = [opt.indivsep.join([''.join([chrseq[x][s], chrseq[x+1][s]]) for x in range(0, nchrs, 2)]) for s in range(nsites)]
+			if opt.hetcount:
+#				hetsr = [[het(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)] for s in range(nsites)]
+#				hets = np.array(hetsr)
+				hets = np.array([[het(chrseq[x][s], chrseq[x+1][s]) for x in range(0, nchrs, 2)] for s in range(nsites)])
+				hetcount = [sum(hets[:, i]) for i in range(indivs)]
 
 #			print([opt.chrname, opt.chrlen, lastpos, opt.length, lastpos + opt.length])
 		if opt.output == 'segsep':
@@ -182,3 +197,6 @@ for line in inputf:
 				lastpos = nextpos
 
 		chrseq = []
+		if opt.hetcount:
+			print('hetcounts: ' + ' '.join([str(x) for x in hetcount]))
+			print('mean: %f' % np.average(hetcount))
